@@ -1,0 +1,19 @@
+### Char Driver creation steps
+- Define user defined device structure
+- Define file operation structure which links to file operation to driver defined file operation functions
+- Define driver init function
+  - Allocate chr_dev region and its major number can be extracted if required.
+  - Allocate memory for user defined device structure
+  - Initialise allocated memory in previous step
+  - Initialise char driver (cdev_init)
+  - Add char driver to kernel (cdev_add)
+- Define exit function
+  - release any allocated memory previously in driver
+  - remove char driver from kernel (cdev_del)
+- Define file operation within driver as per needs e.g.
+  - open
+  - release
+  - read
+  - write
+  - llseek
+  - ioctl

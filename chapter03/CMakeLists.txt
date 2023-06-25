@@ -1,0 +1,1 @@
+add_subdirectory(simple_char_driver)
