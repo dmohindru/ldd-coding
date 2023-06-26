@@ -69,8 +69,8 @@ int simple_char_open(struct inode *inode, struct file *filp) {
             return -ERESTARTSYS;
 
         // TODO: kfree is throwing an error
-//        if (dev->data)
-//            kfree(dev->data);
+        //if (dev->data)
+        //    kfree(dev->data);
         mutex_unlock(&dev->mutex);
     }
     return 0;          /* success */
@@ -237,7 +237,7 @@ void simple_char_cleanup_module(void) {
     cdev_del(&char_driver_p->cdev);
 
     // remove simple_char_driver allocated memory
-    kfree(char_driver_p);
+    //kfree(char_driver_p);
 
     // unregister driver char dev region from kernel
     unregister_chrdev_region(MKDEV(simple_char_major, simple_char_minor), 1);
