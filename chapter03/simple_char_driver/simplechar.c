@@ -20,6 +20,10 @@
 MODULE_AUTHOR("Dhruv Mohindru");
 MODULE_LICENSE("Dual BSD/GPL");
 
+// driver's major and minor number
+static int simple_char_major = 0;
+static int simple_char_minor = 0;
+
 // Simple char driver sturcture
 struct simple_char_driver {
     void *data;
@@ -36,9 +40,7 @@ int simple_char_release(struct inode *inode, struct file *filp);
 // keep the scope to current translation unit (this source file)
 struct simple_char_driver *char_driver_p;
 
-// driver's major and minor number
-int simple_char_major = 0;
-int simple_char_minor = 0;
+
 
 // file ops structure
 struct file_operations simple_char_fops = {
@@ -54,6 +56,11 @@ int simple_char_open(struct inode *inode, struct file *filp) {
 
     struct simple_char_driver *dev;
     printk("open() system call invoked\n");
+    /*
+     container_of(pointer, container_type, container_field);
+     This macro takes a pointer to a field of type container_field , within a structure of type container_type
+     and returns a pointer to the containing structure.
+    */
     dev = container_of(inode->i_cdev, struct simple_char_driver, cdev);
     filp->private_data = dev;
 
@@ -61,7 +68,9 @@ int simple_char_open(struct inode *inode, struct file *filp) {
         if (mutex_lock_interruptible(&dev->mutex))
             return -ERESTARTSYS;
 
-        kfree(dev->data);
+        // TODO: kfree is throwing an error
+//        if (dev->data)
+//            kfree(dev->data);
         mutex_unlock(&dev->mutex);
     }
     return 0;          /* success */
@@ -78,14 +87,22 @@ int simple_char_release(struct inode *inode, struct file *filp) {
 ssize_t simple_char_read(struct file *filp, char __user *buf, size_t count, loff_t *f_pos) {
 
 
-    size_t retval = count;
+    size_t retval = 0;
     // Retrieve pointer to device structure previously set in open() system call
     struct simple_char_driver *dev = filp->private_data;
     if (mutex_lock_interruptible(&dev->mutex)) {
         return -ERESTARTSYS;
     }
 
-    kfree("read() system call invoked");
+    // print some statistics information
+    printk("read() system call invoked for %ld bytes", count);
+    printk("Content of buffer: %s", (char *)dev->data);
+    printk("Size of device data: %ld", dev->size);
+    printk("f_pos value %lld", *f_pos);
+
+
+    if (*f_pos >= dev->size)
+        goto out;
 
     // check if userland program requested for more data than available in kernel buffer
     if (dev->size < count) {
@@ -98,45 +115,64 @@ ssize_t simple_char_read(struct file *filp, char __user *buf, size_t count, loff
         goto out;
     }
 
+    // update file position
+    *f_pos += retval;
+
     out:
     mutex_unlock(&dev->mutex);
+
+    // IMPORTANT: read function should return 0 eventually otherwise library function will repeatedly call
+    // file read function
     return retval;
 }
 
 // file write operation function
 ssize_t simple_char_write(struct file *filp, const char __user *buf, size_t count, loff_t *f_pos) {
 
+
     // Retrieve pointer to device structure previously set in open() system call
     struct simple_char_driver *dev = filp->private_data;
+
     size_t  retval = -ENOMEM;
     size_t byte_to_allocate;
 
     if (mutex_lock_interruptible(&dev->mutex))
         return -ERESTARTSYS;
 
-    printk("write() system call invoked\n");
-
+    printk("write() system call invoked for %lu bytes\n", count);
 
     // if free previously allocated memory
-    if (dev->data)
-        kfree(dev->data);
+    printk("Freeing previous data allocated\n");
+    // TODO: kfree on valid data pointer is causing driver to fail, research about it
+    //if (dev->data)
+    //    kfree(dev->data);
     // reset size
-    dev->size = 0;
+    //dev->size = 0;
 
+    printk("Allocating new memory");
     byte_to_allocate = sizeof (char) * count;
     // allocate requested bytes of data
     dev->data = kmalloc(byte_to_allocate, GFP_KERNEL);
     // zero out allocated memory
     memset(dev->data, 0, byte_to_allocate);
+    printk("Allocated %lu bytes of memory", byte_to_allocate);
 
     // copy data from user space buffer to kernel buffer
     if (copy_from_user(dev->data, buf, count)) {
         retval = -EFAULT;
         goto out;
     }
+    printk("copied data from user into kernel");
 
     // update size of device structure
     dev->size = count;
+
+    // update file offset pointer
+    *f_pos = count;
+
+
+    printk("write() current value of f_pos= %lld\n", *f_pos);
+
 
     // set return value
     retval = count;
@@ -152,13 +188,13 @@ int simple_char_init_module(void) {
     dev_t dev = 0;
 
     // allocate char driver region
-    result = alloc_chrdev_region(&dev, simple_char_minor, 1, "simple_char");
+    result = alloc_chrdev_region(&dev, simple_char_minor, 1, "simplechar");
     // extract major number of driver
     simple_char_major = MAJOR(dev);
 
     // Check for error
     if (result < 0) {
-        printk(KERN_WARNING "simple_char driver cannot get major number %d\n", simple_char_major);
+        printk( "simple_char driver cannot get major number %d\n", simple_char_major);
         return result;
     }
 
@@ -185,6 +221,9 @@ int simple_char_init_module(void) {
                simple_char_minor
                );
 
+    // announce drivers registration
+    printk("Successfully registered simplechar driver with kernel");
+
     return result;
 }
 
@@ -199,6 +238,12 @@ void simple_char_cleanup_module(void) {
 
     // remove simple_char_driver allocated memory
     kfree(char_driver_p);
+
+    // unregister driver char dev region from kernel
+    unregister_chrdev_region(MKDEV(simple_char_major, simple_char_minor), 1);
+
+    // announce driver's de-registration
+    printk(KERN_ALERT "Successfully de-registered simplechar driver with kernel");
 }
 
 // register driver's init and exit function with kernel

@@ -10,6 +10,7 @@
 - Define exit function
   - release any allocated memory previously in driver
   - remove char driver from kernel (cdev_del)
+  - Deallocate chr_dev region
 - Define file operation within driver as per needs e.g.
   - open
   - release

@@ -2,7 +2,7 @@
 # this is independent from the actual kernel object that is built
 add_executable(dummy
         # add all *.h and *.c files here that # CLion should cover
-        simple_char.c
+        simplechar.c
         )
 
 # CLion IDE will find symbols from <linux/*>
