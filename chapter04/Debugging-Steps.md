@@ -1,5 +1,4 @@
 ### Introduction
-<hr>
 This wiki is about steps required to debug linux device driver using interactive debugging using gdb.<p>
 I couldn't find any single post that cover all the steps required to make this happen. Steps in this wiki has been collected for various post some of them listed in Links section.<p>
 For this wiki I have taken example of <b>simple_char_driver</b> listed in [chapter03](../chapter03/simple_char_driver) directory.
@@ -17,7 +16,6 @@ For this wiki I have taken example of <b>simple_char_driver</b> listed in [chapt
 
 
 ### Steps
-<hr>
 
 General outline of these steps
 1. Initial preparation. Follow this [link](https://medium.com/@daeseok.youn/prepare-the-environment-for-developing-linux-kernel-with-qemu-c55e37ba8ade)
@@ -91,8 +89,7 @@ $ cat /dev/simplechar
 ```
 
 ### Links
-<hr>
 1. Compile linux kernel with debugging support, setup GDB and run kernel in QEMU. Follow this [post](https://medium.com/@daeseok.youn/prepare-the-environment-for-developing-linux-kernel-with-qemu-c55e37ba8ade)
-<br>2. Loading debug symbols and setting break point in linux kernel module. [Link](https://www.linux.com/training-tutorials/kernel-newbie-corner-kernel-and-module-debugging-gdb/)
+2. Loading debug symbols and setting break point in linux kernel module. [Link](https://www.linux.com/training-tutorials/kernel-newbie-corner-kernel-and-module-debugging-gdb/)
 
 
