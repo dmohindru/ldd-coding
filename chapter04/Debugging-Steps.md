@@ -14,6 +14,7 @@ For this wiki I have taken example of <b>simple_char_driver</b> listed in [chapt
 - int simple_char_minor
 - struct simple_char_driver *char_driver_p
 
+---
 
 ### Steps
 
@@ -87,7 +88,7 @@ $ cat .text .data .bss
 $ echo "Hello World" > /dev/simplechar 
 $ cat /dev/simplechar
 ```
-
+---
 ### Links
 1. Compile linux kernel with debugging support, setup GDB and run kernel in QEMU. Follow this [post](https://medium.com/@daeseok.youn/prepare-the-environment-for-developing-linux-kernel-with-qemu-c55e37ba8ade)
 2. Loading debug symbols and setting break point in linux kernel module. [Link](https://www.linux.com/training-tutorials/kernel-newbie-corner-kernel-and-module-debugging-gdb/)
