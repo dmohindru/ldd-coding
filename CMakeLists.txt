@@ -13,4 +13,8 @@ find_package(KernelHeaders REQUIRED)
 add_definitions(-D__KERNEL__ -DMODULE)
 
 add_subdirectory(chapter03)
-add_subdirectory(chapter04)
+add_subdirectory(chapter06)
+
+
+### user land programs
+add_subdirectory(userland-program)
