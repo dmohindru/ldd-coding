@@ -1,1 +1,3 @@
 add_executable(calculator_ioctl_fun calculator_ioctl_fun.c)
+
+add_executable(scull_ioctl scull_ioctl.c)
