@@ -22,7 +22,7 @@ long calculator_dev_ioctl(struct file *file_p, unsigned int cmd, unsigned long a
 struct file_operations calculator_fops = {
         .owner = THIS_MODULE,
         .read = calculator_dev_read,
-//        .write = calculator_dev_write,
+        .write = calculator_dev_write,
         .open = calculator_dev_open,
         .release = calculator_dev_release,
 //        .unlocked_ioctl = calculator_dev_ioctl
@@ -102,6 +102,56 @@ ssize_t calculator_dev_read(struct file *file_p, char __user *buf, size_t count,
 }
 
 ssize_t calculator_dev_write(struct file *file_p, const char __user *buf, size_t count, loff_t *f_pos) {
+    
+    // Retrieve pointer to device structure previously set in open() system call
+    struct calculator_driver *dev = file_p->private_data;
+    size_t required_size = sizeof(dev->first_op);
+    printk("write() system call invoked for %ld bytes", count);
+    
+    if (count < required_size) {
+        return -EINVAL;
+    }
+
+    if (mutex_lock_interruptible(&dev->mutex)) {
+        return -ERESTARTSYS;
+    }
+
+    // copy only the required_size of bytes to first operand
+    if (copy_from_user(&dev->first_op, buf, required_size)) {
+        return -EFAULT;
+    }
+
+    printk("write(): value of first_op [%ld]\n", dev->first_op);
+
+    // Perform business logic of the driver
+    switch(dev->op) {
+        case ADD:
+            printk("write(): add operation being performed\n");
+            dev->result = dev->first_op + dev->second_op;
+            break;
+        case SUB:
+            printk("write(): sub operation being performed\n");
+            dev->result = dev->first_op - dev->second_op;
+            break;
+        case MUL:
+            printk("write(): mul operation being performed\n");
+            dev->result = dev->first_op * dev->second_op;
+            break;
+        case DIV:
+            printk("write(): div operation being performed\n");
+            dev->result = dev->first_op / dev->second_op;
+            break;
+        default:
+            printk("write(): No operation being performed\n");
+    }
+
+    printk("write(): value of result [%ld]\n", dev->result);
+
+    // Important: don't update the value of f_pos pointer
+
+    mutex_unlock(&dev->mutex);
+
+    return required_size;
 
 }
 
@@ -112,7 +162,7 @@ int calculator_dev_init_module(void) {
     dev_t dev = 0;
 
     // allocate char driver region
-    result = alloc_chrdev_region(&dev, calculator_dev_minor, 1, "calculator_dev");
+    result = alloc_chrdev_region(&dev, calculator_dev_minor, 1, "calculator");
 
     // extract major number of driver allocated
     calculator_dev_major = MAJOR(dev);
@@ -140,6 +190,9 @@ int calculator_dev_init_module(void) {
     // initialise second operand and operator
     calculator_driver_p->second_op = 1;
     calculator_driver_p->op = ADD;
+
+    // TODO just for debug purpose
+    //calculator_driver_p->result = 1234;
 
     // add char driver to kernel
     err = cdev_add(&calculator_driver_p->cdev, dev_no, 1);

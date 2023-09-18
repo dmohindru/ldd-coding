@@ -13,6 +13,7 @@ enum operator {
 
 struct calculator_driver {
     void *data;
+    long first_op;
     long second_op;
     long result;
     enum operator op;
