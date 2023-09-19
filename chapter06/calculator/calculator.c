@@ -25,7 +25,7 @@ struct file_operations calculator_fops = {
         .write = calculator_dev_write,
         .open = calculator_dev_open,
         .release = calculator_dev_release,
-//        .unlocked_ioctl = calculator_dev_ioctl
+        .unlocked_ioctl = calculator_dev_ioctl
 };
 
 int calculator_dev_open(struct inode *inode, struct file *file_p) {
@@ -155,8 +155,59 @@ ssize_t calculator_dev_write(struct file *file_p, const char __user *buf, size_t
 
 }
 
+long calculator_dev_ioctl(struct file *file_p, unsigned int cmd, unsigned long arg) {
 
-// driver init function
+    // Retrieve pointer to device structure previously set in open() system call
+    struct calculator_driver *dev = file_p->private_data;
+
+    int err = 0, tmp;
+    int retval = 0;
+
+    // extract the type and number bitfield and don't decode
+    // wrong cmds: return ENOTTY (inappropriate ioctl) before access_ok()
+    if (_IOC_TYPE(cmd) != CALCULATOR_IOC_MAGIC) return -ENOTTY;
+    if (_IOC_NR(cmd) > CALCULATOR_IOC_MAX) return -ENOTTY;
+
+    // check if user process is allowed to access the provided memory address
+    err = access_ok((void __user *) arg, _IOC_SIZE(cmd));
+    if (err) return -EFAULT;
+
+    switch(cmd) {
+        case CALCULATOR_SET_OPERATOR:
+            printk(KERN_INFO "CALCULATOR_SET_OPERATOR ioctl command being invoked\n");
+            if (!capable(CAP_SYS_ADMIN))
+                return -EPERM;
+            retval = __get_user(tmp, (int __user *)arg);
+            if (tmp < ADD || tmp > DIV)
+                return -EINVAL;
+            dev->op = tmp;
+            break;
+        case CALCULATOR_SET_OPERAND:
+            printk(KERN_INFO "CALCULATOR_SET_OPERAND ioctl command being invoked\n");
+            retval = __get_user(dev->second_op, (long __user*)arg);
+            break;
+        case CALCULATOR_RESET:
+            printk(KERN_INFO "CALCULATOR_RESET ioctl command being invoked\n");
+            dev->second_op = 1;
+            dev->op = ADD;
+            break;
+        case CALCULATOR_QUERY_OPERATOR:
+            printk(KERN_INFO "CALCULATOR_QUERY_OPERATOR ioctl command being invoked\n");
+            retval = __put_user(dev->op, (int __user *)arg);
+            break;
+        case CALCULATOR_QUERY_OPERAND:
+            printk(KERN_INFO "CALCULATOR_QUERY_OPERAND ioctl command being invoked\n");
+            retval = __put_user(dev->second_op, (long __user*)arg);
+            break;
+        default: // this block is redundant as cmd was checked against MAXNR
+            return -ENOTTY;
+    }
+
+    return retval;
+
+}
+
+
 int calculator_dev_init_module(void) {
     int result, dev_no, err;
     dev_t dev = 0;
@@ -205,6 +256,14 @@ int calculator_dev_init_module(void) {
 
     // announce drivers registration
     printk(KERN_ALERT "Successfully registered calculator_driver with kernel");
+
+    // print ioctl number for user land programs
+    printk(KERN_INFO "calculator ioctl numbers\n");
+    printk(KERN_INFO "CALCULATOR_SET_OPERATOR: 0x%lX\n", CALCULATOR_SET_OPERATOR);
+    printk(KERN_INFO "CALCULATOR_SET_OPERAND: 0x%lX\n", CALCULATOR_SET_OPERAND);
+    printk(KERN_INFO "CALCULATOR_RESET: 0x%X\n", CALCULATOR_RESET);
+    printk(KERN_INFO "CALCULATOR_QUERY_OPERATOR: 0x%lX\n", CALCULATOR_QUERY_OPERATOR);
+    printk(KERN_INFO "CALCULATOR_QUERY_OPERAND: 0x%lX\n", CALCULATOR_QUERY_OPERAND);
 
     return result;
 
