@@ -9,3 +9,4 @@ Purpose of this driver is to practice ioctl system calls. This driver has the fo
 - Only Admin user will be able to set the operation type (add, sub, mul, div) via ioctl system call.
 - Normal user will be able to set the second operand for the calculation via ioctl.
 - Normal user will be able to query device driver for current operation type and second operand via ioctl.
+- Normal user will be able to reset the device driver to its original state (default value of operator and second operand)
