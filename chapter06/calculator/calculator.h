@@ -22,7 +22,7 @@ struct calculator_driver {
 };
 
 // ioctl number
-#define CALCULATOR_IOC_MAGIC 'z'
+#define CALCULATOR_IOC_MAGIC 'Z'
 
 #define CALCULATOR_SET_OPERATOR _IOW(CALCULATOR_IOC_MAGIC, 1, int)
 #define CALCULATOR_SET_OPERAND _IOW(CALCULATOR_IOC_MAGIC, 2, long)

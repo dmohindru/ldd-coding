@@ -157,20 +157,25 @@ ssize_t calculator_dev_write(struct file *file_p, const char __user *buf, size_t
 
 long calculator_dev_ioctl(struct file *file_p, unsigned int cmd, unsigned long arg) {
 
+
+
     // Retrieve pointer to device structure previously set in open() system call
     struct calculator_driver *dev = file_p->private_data;
 
     int err = 0, tmp;
     int retval = 0;
 
+
+
     // extract the type and number bitfield and don't decode
     // wrong cmds: return ENOTTY (inappropriate ioctl) before access_ok()
     if (_IOC_TYPE(cmd) != CALCULATOR_IOC_MAGIC) return -ENOTTY;
     if (_IOC_NR(cmd) > CALCULATOR_IOC_MAX) return -ENOTTY;
 
+    printk(KERN_INFO "Calculator ioctl function being invoked");
     // check if user process is allowed to access the provided memory address
-    err = access_ok((void __user *) arg, _IOC_SIZE(cmd));
-    if (err) return -EFAULT;
+//    err = access_ok((void __user *) arg, _IOC_SIZE(cmd));
+//    if (err) return -EFAULT;
 
     switch(cmd) {
         case CALCULATOR_SET_OPERATOR:
