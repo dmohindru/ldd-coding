@@ -174,8 +174,8 @@ long calculator_dev_ioctl(struct file *file_p, unsigned int cmd, unsigned long a
 
     printk(KERN_INFO "Calculator ioctl function being invoked");
     // check if user process is allowed to access the provided memory address
-//    err = access_ok((void __user *) arg, _IOC_SIZE(cmd));
-//    if (err) return -EFAULT;
+    err = access_ok((void __user *) arg, _IOC_SIZE(cmd));
+    if (!err) return -EFAULT;
 
     switch(cmd) {
         case CALCULATOR_SET_OPERATOR:
