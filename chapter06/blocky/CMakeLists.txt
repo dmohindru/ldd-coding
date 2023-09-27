@@ -2,7 +2,7 @@
 # this is independent from the actual kernel object that is built
 add_executable(blocky
         # add all *.h and *.c files here that # CLion should cover
-        blocky.c
+        blocky.c circular_buffer.c
         )
 
 # CLion IDE will find symbols from <linux/*>
