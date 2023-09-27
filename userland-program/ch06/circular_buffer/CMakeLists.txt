@@ -1,0 +1,1 @@
+add_executable(circular_buffer main.c circular_buffer.c)
