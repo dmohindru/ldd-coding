@@ -7,7 +7,7 @@ struct circular_buffer {
     long length, size;
 };
 
-void circular_buffer_init(struct circular_buffer *p_buffer, const char* data_buf, long size);
+void circular_buffer_init(struct circular_buffer *p_buffer, char* data_buf, long size);
 int circular_buffer_is_full(struct circular_buffer *p_buffer);
 long circular_buffer_capacity(struct circular_buffer *p_buffer);
 long circular_buffer_write(struct circular_buffer *p_buffer, const char *data_buf, long size);

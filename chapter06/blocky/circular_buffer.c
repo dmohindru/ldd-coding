@@ -1,6 +1,6 @@
 #include "circular_buffer.h"
 
-void circular_buffer_init(struct circular_buffer *p_buffer, const char* data_buf, long size) {
+void circular_buffer_init(struct circular_buffer *p_buffer, char* data_buf, long size) {
     p_buffer->buffer = data_buf;
     p_buffer->size = size;
     p_buffer->head = p_buffer->tail = p_buffer->buffer;
