@@ -1,4 +1,4 @@
-blocky-objs := circular_buffer.o
+blocky-objs:= main.o circular_buffer.o
 
 obj-m:=  blocky.o
 
