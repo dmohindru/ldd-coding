@@ -15,6 +15,10 @@ long circular_buffer_capacity(struct circular_buffer *p_buffer) {
     return p_buffer->size - p_buffer->length;
 }
 
+long circular_buffer_length(struct circular_buffer *p_buffer) {
+    return p_buffer->length;
+}
+
 long circular_buffer_write(struct circular_buffer *p_buffer, const char *data_buf, long size) {
     long i, buffer_cap = circular_buffer_capacity(p_buffer);
 

@@ -43,7 +43,7 @@ struct file_operations blocky_fops = {
 int blocky_dev_open(struct inode *inode, struct file *file_p) {
     struct blocky_driver *p_driver;
 
-    printk("open() system call invoked for blocky device\n");
+    printk(KERN_INFO "open() system call invoked for blocky device\n");
 
     /*
      container_of(pointer, container_type, container_field);
@@ -57,13 +57,47 @@ int blocky_dev_open(struct inode *inode, struct file *file_p) {
 }
 
 int blocky_dev_release(struct inode *inode, struct file *file_p) {
-    printk("release() system call invoked for blocky driver\n");
+    printk(KERN_INFO "release() system call invoked for blocky driver\n");
 
     return 0;
 }
 
 ssize_t blocky_dev_read(struct file *file_p, char __user *buf, size_t count, loff_t *f_pos) {
-    return 0;
+    struct blocky_driver *dev = file_p->private_data;
+    char data[count]; /* local buffer to copy data from circular buffer */
+    if (mutex_lock_interruptible(&dev->mutex)) {
+        return -ERESTARTSYS;
+    }
+
+    while (circular_buffer_length(dev->buffer) < count) { /* Not enough data available for the reader  */
+        mutex_unlock(&dev->mutex);
+        // TODO: Insert non blocking code here
+
+        printk(KERN_INFO "Process %i (%s) going to sleep\n", current->pid, current->comm);
+        if (wait_event_interruptible(dev->reader_q, circular_buffer_length(dev->buffer) >= count)) {
+            return -ERESTARTSYS;
+        }
+        // Process has woken up reacquire lock to begin its read process
+        printk("Process %i (%s) awoken\n", current->pid, current->comm);
+        if (mutex_lock_interruptible(&dev->mutex)) {
+            return -ERESTARTSYS;
+        }
+    }
+
+    circular_buffer_read(dev->buffer, data, count);
+    if (copy_to_user(buf, data, count)) {
+        mutex_unlock(&dev->mutex);
+        return -EFAULT;
+    }
+
+    mutex_unlock(&dev->mutex);
+
+    // Wake up any sleeping writer waiting for space being available
+    wake_up_interruptible(&dev->writer_q);
+
+    printk(KERN_INFO "Process %i (%s) did read %li bytes\n", current->pid, current->comm, count);
+
+    return count;
 }
 
 ssize_t blocky_dev_write(struct file *file_p, const char __user *buf, size_t count, loff_t *f_pos) {
