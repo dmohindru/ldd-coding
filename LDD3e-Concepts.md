@@ -4,6 +4,19 @@ This file captures the notes and important concepts extracted from book Linux De
 
 ---
 
+# Linux Device Drivers 3rd Ed. — Modern Ready Reckoner (Part 1)
+
+**Covers Chapters 1–5 (Blocking I/O, Timers, Memory, Hardware I/O, Interrupts)**
+| **Chapter** | **Focus** |
+| ----------- | ------------------------------------------------------------------------- |
+| 6 | Advanced blocking and non-blocking I/O (wait queues, async notifications) |
+| 7 | Timers and deferred work (bottom halves, tasklets, workqueues) |
+| 8 | Memory management for drivers (kmalloc, vmalloc, mmap, DMA basics) |
+| 9 | Hardware I/O and port access |
+| 10 | Interrupt handling (request_irq, threaded IRQs, shared interrupts) |
+
+---
+
 # Chapter 1 — Introduction to Device Drivers
 
 Device drivers are the bridge between user space and hardware.
@@ -130,6 +143,14 @@ scripts/sign-file sha256 key.priv key.x509 hello.ko
 - MODULE_LICENSE("GPL") ensures kernel exports are accessible.
 - Keep builds out-of-tree using the M= syntax to avoid polluting the kernel source.
 
+## Book Examples
+
+| **Example Name**        | **Brief Description**                                          | **GitHub Source**                                                                                            |
+| :---------------------- | :------------------------------------------------------------- | :----------------------------------------------------------------------------------------------------------- |
+| `hello`                 | Simplest “Hello World” loadable module using `printk`.         | [martinezjavier/ldd3 – ch2/hello.c](https://github.com/martinezjavier/ldd3/blob/master/misc-modules/hello.c) |
+| `hello_param`           | Demonstrates passing parameters via `insmod` (`module_param`). | [ldd3/misc-modules/hellop.c](https://github.com/martinezjavier/ldd3/blob/master/misc-modules/hellop.c)       |
+| `export` / `use_export` | Shows how one module exports symbols for another to use.       | [ldd3/misc-modules/export.c](https://github.com/martinezjavier/ldd3/blob/master/misc-modules/export.c)       |
+
 ## Real World:
 
 All modern distro kernels use DKMS (Dynamic Kernel Module Support) to rebuild external modules automatically on kernel updates.
@@ -236,6 +257,13 @@ sudo cat /dev/simple_char
 - Always check user-supplied lengths and pointers.
 - Each char driver instance typically corresponds to one minor number.
 
+## Book Examples
+
+| **Example Name**                       | **Brief Description**                                                                                        | **GitHub Source**                                                       |
+| :------------------------------------- | :----------------------------------------------------------------------------------------------------------- | :---------------------------------------------------------------------- |
+| `scull`                                | “Simple Character Utility for Loading Localities” — core character driver with `open`, `read`, `write`, etc. | [ldd3/scull/](https://github.com/martinezjavier/ldd3/tree/master/scull) |
+| `scullp`, `scullc`, `sculld`, `scullv` | Variants of `scull` showing different memory management models (page-based, chunked, linked, virtual).       | [ldd3/scull/](https://github.com/martinezjavier/ldd3/tree/master/scull) |
+
 ## Rust Kernel Analogy
 
 ```rust
@@ -249,3 +277,252 @@ impl FileOperations for MyChar {
 ```
 
 ---
+
+# Chapter 4 — Debugging Techniques
+
+When developing kernel drivers, bugs can crash the entire system — so you need safe methods to trace behavior, inspect memory, and log intelligently.
+
+## Logging and Tracing
+
+Use the kernel’s built-in logging functions (preferred over printf)
+
+```c
+pr_debug("debug: x=%d\n", x);
+pr_info("info: device opened\n");
+pr_warn("warning: low buffer\n");
+pr_err("error: invalid state\n");
+```
+
+Enable dynamic debugging for specific modules:
+
+```bash
+echo 'file simple_char.c +p' > /sys/kernel/debug/dynamic_debug/control
+```
+
+To disable:
+
+```bash
+echo 'file simple_char.c -p' > /sys/kernel/debug/dynamic_debug/control
+```
+
+## Using dmesg
+
+All pr\_\* output goes to the kernel ring buffer, viewable via:
+
+```bash
+dmesg | tail
+```
+
+To clear:
+
+```bash
+sudo dmesg -C
+```
+
+## Kernel Oops and Backtraces
+
+If your driver dereferences an invalid pointer or uses an uninitialized structure, you’ll get an Oops message.
+A sample backtrace:
+
+```bash
+BUG: unable to handle kernel NULL pointer dereference at 00000000
+IP: [<ffffffff8123b2e0>] my_read+0x14/0x80 [simple_char]
+...
+```
+
+Use addr2line to map it back:
+
+```bash
+addr2line -e simple_char.ko 0x14
+```
+
+## Kernel Probes (kprobes, ftrace, bpf)
+
+For modern kernels, you can dynamically instrument functions.
+
+**Example: ftrace**
+
+```bash
+echo function > /sys/kernel/debug/tracing/current_tracer
+echo my_read > /sys/kernel/debug/tracing/set_ftrace_filter
+cat /sys/kernel/debug/tracing/trace
+```
+
+**Rust Example (for inline tracing)**
+
+```bash
+kernel::pr_debug!("MyChar::read() called");
+```
+
+## Debugging Tools Summary
+
+| Tool                 | Use Case                          |
+| -------------------- | --------------------------------- |
+| `dmesg`, `pr_info()` | Basic kernel logs                 |
+| `dynamic_debug`      | Enable/disable runtime debug logs |
+| `ftrace`             | Function call tracing             |
+| `kgdb`               | Step-through debugging            |
+| `perf`               | Performance profiling             |
+| `bpftrace`           | Dynamic event tracing             |
+
+## Learning Notes
+
+- Never use printf or std::println!() in kernel space — only kernel-safe logging macros.
+- Keep pr_debug lines in code but disable them via config — useful later in production.
+- If your driver crashes, check /var/log/kern.log or journalctl -k.
+- For hardware I/O debugging, hexdump, strace, and logic analyzers are invaluable.
+
+## Book Examples
+
+| **Example Name** | **Brief Description**                                             | **GitHub Source**                                                                             |
+| :--------------- | :---------------------------------------------------------------- | :-------------------------------------------------------------------------------------------- |
+| `faulty`         | Module that deliberately crashes to demonstrate kernel debugging. | [mharsch/ldd3-samples/faulty](https://github.com/mharsch/ldd3-samples/tree/master/faulty)     |
+| `oops`           | Demonstrates triggering oops and inspecting kernel backtraces.    | [jesstess/ldd3-examples/faulty](https://github.com/jesstess/ldd3-examples/tree/master/faulty) |
+
+## Real-World Reference:
+
+Look at `drivers/tty/serial/serial_core.c` — a masterclass in debug logging and safe instrumentation.
+
+---
+
+# Chapter 5 — File Operations Deep Dive
+
+A driver connects with user space primarily through the file_operations structure.
+This structure defines how the kernel calls your driver on user actions (open, read, write, ioctl, poll, mmap).
+
+## Common File Operations
+
+| Operation         | Description                     | User API Trigger     |
+| ----------------- | ------------------------------- | -------------------- |
+| `.open`           | Initialize or prepare device    | `open()`             |
+| `.release`        | Cleanup                         | `close()`            |
+| `.read`           | Transfer data to user           | `read()`             |
+| `.write`          | Receive data from user          | `write()`            |
+| `.unlocked_ioctl` | Custom control commands         | `ioctl()`            |
+| `.poll`           | Event-based readiness           | `select()`, `poll()` |
+| `.mmap`           | Map device memory to user space | `mmap()`             |
+
+## Example: ioctl Handling
+
+```c
+#define IOCTL_CLEAR _IO('a', 1)
+#define IOCTL_FILL  _IOW('a', 2, int)
+
+static long my_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
+{
+    switch (cmd) {
+    case IOCTL_CLEAR:
+        memset(device_buffer, 0, BUF_SIZE);
+        break;
+    case IOCTL_FILL: {
+        int val;
+        if (copy_from_user(&val, (int __user *)arg, sizeof(val)))
+            return -EFAULT;
+        memset(device_buffer, val, BUF_SIZE);
+        break;
+    }
+    default:
+        return -EINVAL;
+    }
+    return 0;
+}
+
+static const struct file_operations fops = {
+    .owner          = THIS_MODULE,
+    .read           = my_read,
+    .write          = my_write,
+    .unlocked_ioctl = my_ioctl,
+};
+
+```
+
+Test from user space:
+
+```c
+int fd = open("/dev/simple_char", O_RDWR);
+int val = 0x41;
+ioctl(fd, IOCTL_FILL, &val);
+```
+
+## Example: Non-blocking I/O & Poll
+
+If you want your driver to support select() or poll(), you can use a wait queue.
+
+```c
+DECLARE_WAIT_QUEUE_HEAD(wq);
+static int flag = 0;
+
+static ssize_t my_read(...) {
+    wait_event_interruptible(wq, flag != 0);
+    flag = 0;
+    return 0;
+}
+
+static __poll_t my_poll(struct file *filp, poll_table *wait) {
+    poll_wait(filp, &wq, wait);
+    if (flag)
+        return EPOLLIN | EPOLLRDNORM;
+    return 0;
+}
+```
+
+From user space:
+
+```bash
+poll() waits until data is ready for reading
+```
+
+## Learning Notes
+
+- Always validate ioctl command numbers and argument pointers.
+- Use `_IOC_DIR`, `_IOC_TYPE`, `_IOC_NR`, `_IOC_SIZE` macros to decode requests.
+- Prefer `unlocked_ioctl` over legacy `ioctl` in modern kernels.
+- For asynchronous event-driven design, integrate wait queues and poll methods.
+- In Rust kernel drivers, these are implemented via traits under `kernel::file`.
+
+## Book Examples
+
+| **Example Name**  | **Brief Description**                                                 | **GitHub Source**                                                                    |
+| :---------------- | :-------------------------------------------------------------------- | :----------------------------------------------------------------------------------- |
+| `scullconcurrent` | Shows safe concurrent access using semaphores and spinlocks.          | [ldd3/scull/](https://github.com/martinezjavier/ldd3/tree/master/scull)              |
+| `scullpipe`       | Blocking I/O driver using wait queues for read/write synchronization. | [ldd3/scull/pipe.c](https://github.com/martinezjavier/ldd3/blob/master/scull/pipe.c) |
+
+## Real-World Reference
+
+- `/drivers/input/evdev.c` — perfect example of `poll`, `read`, and `ioctl`.
+- `/drivers/tty/tty_io.c` — full implementation of file ops for terminal devices.
+
+---
+
+# Summary of Part 1
+
+| Chapter | Focus            | Key Concepts                        |
+| ------- | ---------------- | ----------------------------------- |
+| 1       | Intro to Drivers | Kernel vs user space, module basics |
+| 2       | Module Mechanics | Building, inserting, removing       |
+| 3       | Char Drivers     | `cdev`, `file_operations`, buffers  |
+| 4       | Debugging        | `pr_debug`, ftrace, dynamic_debug   |
+| 5       | File Operations  | ioctl, poll, non-blocking I/O       |
+
+## Learning Map
+
+1. Start with “Hello World” kernel module
+2. Learn build/load cycle (insmod, modprobe)
+3. Write a simple char driver (read, write)
+4. Add ioctl & poll
+5. Integrate debugging macros
+
+---
+
+# Part 2 — Linux Device Drivers Ready Reckoner
+
+**Covers Chapters 6–10 (Blocking I/O, Timers, Memory, Hardware I/O, Interrupts)**
+| **Chapter** | **Focus** |
+| ----------- | ------------------------------------------------------------------------- |
+| 6 | Advanced blocking and non-blocking I/O (wait queues, async notifications) |
+| 7 | Timers and deferred work (bottom halves, tasklets, workqueues) |
+| 8 | Memory management for drivers (kmalloc, vmalloc, mmap, DMA basics) |
+| 9 | Hardware I/O and port access |
+| 10 | Interrupt handling (request_irq, threaded IRQs, shared interrupts) |
+
+**Targeted for Linux 6.6 LTS — Hybrid C + Rust Reference**
