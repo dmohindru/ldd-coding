@@ -525,4 +525,332 @@ poll() waits until data is ready for reading
 | 9 | Hardware I/O and port access |
 | 10 | Interrupt handling (request_irq, threaded IRQs, shared interrupts) |
 
-**Targeted for Linux 6.6 LTS — Hybrid C + Rust Reference**
+## **Targeted for Linux 6.6 LTS — Hybrid C + Rust Reference**
+
+# Chapter 6 — Blocking and Non-blocking I/O
+
+Device drivers often need to suspend a process until a condition is met, e.g., data available for reading.
+
+## Wait Queues
+
+Wait queues let a process sleep until a condition becomes true.
+
+```c
+DECLARE_WAIT_QUEUE_HEAD(my_waitqueue);
+static int flag = 0;
+
+static ssize_t my_read(struct file *filp, char __user *buf, size_t len, loff_t *off)
+{
+    wait_event_interruptible(my_waitqueue, flag != 0);
+    flag = 0;
+    return 0;
+}
+```
+
+- `wait_event_interruptible(queue, condition)` sleeps until `condition` is true.
+- Non-blocking behavior: return `-EAGAIN` if `O_NONBLOCK` is set.
+
+## Poll and Select
+
+```c
+static __poll_t my_poll(struct file *filp, poll_table *wait)
+{
+    poll_wait(filp, &my_waitqueue, wait);
+    if (flag)
+        return EPOLLIN | EPOLLRDNORM;
+    return 0;
+}
+```
+
+User-space test:
+
+```c
+fd_set fds;
+FD_ZERO(&fds);
+FD_SET(fd, &fds);
+select(fd+1, &fds, NULL, NULL, NULL);
+```
+
+## Learning Notes
+
+- Always guard shared variables with proper synchronization (spinlocks/mutexes).
+- Non-blocking I/O is critical for GUI apps or network drivers.
+
+## Book Examples
+
+| **Example Name** | **Brief Description**                                     | **GitHub Source**                                                                                    |
+| :--------------- | :-------------------------------------------------------- | :--------------------------------------------------------------------------------------------------- |
+| `sculluid`       | Adds file ownership and user-based access control.        | [ldd3/scull/sculluid.c](https://github.com/martinezjavier/ldd3/blob/master/scull/sculluid.c)         |
+| `scull_access`   | Demonstrates file permission control and `open` policies. | [ldd3/scull/scull_access.c](https://github.com/martinezjavier/ldd3/blob/master/scull/scull_access.c) |
+| `scullsingle`    | Restricts driver to single/multiple open semantics.       | [ldd3/scull/](https://github.com/martinezjavier/ldd3/tree/master/scull)                              |
+
+---
+
+# Chapter 7 — Timers and Deferred Work
+
+Kernel allows deferring work to be done later:
+
+- Timers: Schedule function at specific time.
+- Tasklets: Run in softirq context, non-blocking, quick execution.
+- Workqueues: Kernel thread context, can sleep.
+
+## Timer Example
+
+```c
+#include <linux/timer.h>
+static struct timer_list my_timer;
+
+void timer_callback(struct timer_list *t)
+{
+    pr_info("Timer fired!\n");
+}
+
+static int __init my_init(void)
+{
+    timer_setup(&my_timer, timer_callback, 0);
+    mod_timer(&my_timer, jiffies + msecs_to_jiffies(2000));
+    return 0;
+}
+```
+
+## Tasklet Example
+
+```c
+#include <linux/interrupt.h>
+
+void tasklet_func(unsigned long data) {
+    pr_info("Tasklet executed: %lu\n", data);
+}
+
+DECLARE_TASKLET(my_tasklet, tasklet_func, 42);
+tasklet_schedule(&my_tasklet);
+```
+
+## Workqueue Example
+
+```c
+#include <linux/workqueue.h>
+
+static void my_work_func(struct work_struct *work) {
+    pr_info("Workqueue executed\n");
+}
+static DECLARE_WORK(my_work, my_work_func);
+schedule_work(&my_work);
+```
+
+## Learning Notes
+
+- **Tasklets:** Cannot sleep, run in interrupt context.
+- **Workqueues:** Can sleep, run in process context.
+- Timers are suitable for delayed actions; tasklets/workqueues for bottom halves.
+
+## Book Examples
+
+| **Example Name** | **Brief Description**                                         | **GitHub Source**                                                                    |
+| :--------------- | :------------------------------------------------------------ | :----------------------------------------------------------------------------------- |
+| `scullm`         | Demonstrates mapping kernel memory to user space with `mmap`. | [ldd3/scull/mmap.c](https://github.com/martinezjavier/ldd3/blob/master/scull/mmap.c) |
+
+---
+
+# Chapter 8 — Memory Management
+
+Drivers allocate memory for buffers, device structures, and DMA.
+
+## kmalloc / kfree
+
+```c
+char *buf = kmalloc(128, GFP_KERNEL);
+if (!buf) return -ENOMEM;
+kfree(buf);
+```
+
+- `GFP_KERNEL` may sleep, suitable for process context.
+- `GFP_ATOMIC` must be used in interrupt context.
+
+## Lookaside Cache (kmem_cache)
+
+```c
+struct kmem_cache *my_cache;
+my_cache = kmem_cache_create("my_cache", sizeof(struct my_obj), 0, SLAB_HWCACHE_ALIGN, NULL);
+void *obj = kmem_cache_alloc(my_cache, GFP_KERNEL);
+kmem_cache_free(my_cache, obj);
+```
+
+## vmalloc
+
+Allocates contiguous virtual memory, may not be physically contiguous:
+
+```c
+void *vbuf = vmalloc(4096);
+vfree(vbuf);
+```
+
+## Per-CPU Variables
+
+```c
+DEFINE_PER_CPU(int, my_counter);
+this_cpu_inc(my_counter);
+```
+
+## Learning Notes
+
+- Always free memory in the same context you allocated.
+- DMA buffers may need dma_alloc_coherent.
+- Avoid vmalloc in high-performance, frequently accessed paths.
+
+## Book Examples
+
+| **Example Name** | **Brief Description**                                      | **GitHub Source**                                                                         |
+| :--------------- | :--------------------------------------------------------- | :---------------------------------------------------------------------------------------- |
+| `kalloc`         | Demonstrates `kmalloc`, `vmalloc`, and slab allocator use. | [mharsch/ldd3-samples/memory](https://github.com/mharsch/ldd3-samples/tree/master/memory) |
+
+---
+
+# Chapter 9 — Hardware I/O
+
+Device drivers communicate through I/O ports or memory-mapped I/O.
+
+## I/O Port Access
+
+```c
+#include <asm/io.h>
+outb(0xFF, 0x378); // write byte to parallel port
+unsigned char val = inb(0x378); // read byte
+```
+
+Check allocation:
+
+```c
+request_region(0x378, 3, "my_port");
+release_region(0x378, 3);
+```
+
+## Memory-Mapped I/O
+
+```c
+#include <linux/io.h>
+void __iomem *reg;
+reg = ioremap(0xFE000000, 0x100);
+iowrite32(0x1234, reg);
+u32 val = ioread32(reg);
+iounmap(reg);
+```
+
+## Learning Notes
+
+- Use memory barriers (wmb(), rmb()) to prevent reordering.
+- Always request/release resources to avoid conflicts.
+- For ISA / legacy ports, check /proc/ioports.
+
+## Book Examples
+
+| **Example Name** | **Brief Description**                                                                          | **GitHub Source**                                                                                |
+| :--------------- | :--------------------------------------------------------------------------------------------- | :----------------------------------------------------------------------------------------------- |
+| `short`          | Simulated hardware I/O driver using the parallel port for I/O access and interrupt simulation. | [ldd3/short/](https://github.com/martinezjavier/ldd3/tree/master/short)                          |
+| `shortprint`     | Debug printing version of `short` for port I/O visibility.                                     | [ldd3/short/shortprint.c](https://github.com/martinezjavier/ldd3/blob/master/short/shortprint.c) |
+
+---
+
+# Chapter 10 — Interrupt Handling
+
+Interrupts allow devices to signal the CPU asynchronously.
+
+## Basic IRQ Handling
+
+```c
+#include <linux/interrupt.h>
+
+static irqreturn_t my_irq_handler(int irq, void *dev_id)
+{
+    pr_info("IRQ %d triggered\n", irq);
+    return IRQ_HANDLED;
+}
+
+request_irq(17, my_irq_handler, IRQF_SHARED, "my_irq", &my_dev);
+free_irq(17, &my_dev);
+```
+
+- **Top-half:** quick execution, non-blocking.
+- **Bottom-half:** deferred work (tasklets, workqueues).
+
+## Shared IRQs
+
+- Must specify `IRQF_SHARED`.
+- Use unique `dev_id`.
+- Return `IRQ_NONE` if the interrupt was not for your device.
+
+## Learning Notes
+
+- Avoid sleeping in top-half (use GFP_ATOMIC if allocating memory).
+- Use tasklets/workqueues for longer processing.
+- Use procfs or sysfs to monitor interrupts (/proc/interrupts).
+
+## Book Examples
+
+| **Example Name** | **Brief Description**                            | **GitHub Source**                                                                                      |
+| :--------------- | :----------------------------------------------- | :----------------------------------------------------------------------------------------------------- |
+| `shortirq`       | Demonstrates interrupt handling and shared IRQs. | [ldd3/short/shortirq.c](https://github.com/martinezjavier/ldd3/blob/master/short/shortirq.c)           |
+| `shortprintirq`  | Interrupt handler with detailed event logging.   | [ldd3/short/shortprintirq.c](https://github.com/martinezjavier/ldd3/blob/master/short/shortprintirq.c) |
+
+---
+
+# Summary of Part 2
+
+| Chapter | Focus                  | Key Points                                    |
+| ------- | ---------------------- | --------------------------------------------- |
+| 6       | Blocking I/O           | Wait queues, poll/select, non-blocking I/O    |
+| 7       | Timers & Deferred Work | Timers, tasklets, workqueues, bottom halves   |
+| 8       | Memory Management      | kmalloc, vmalloc, mempools, per-CPU variables |
+| 9       | Hardware I/O           | Ports, memory-mapped I/O, barriers            |
+| 10      | Interrupts             | request_irq, top/bottom halves, shared IRQs   |
+
+---
+
+# Part 3 — Linux Device Drivers Ready Reckoner
+
+Chapters 11–15 (Kernel Types, Data Structures, USB & Serial Drivers, Synchronization)
+| Chapter | Focus |
+| ------- | ---------------------------------------------------------- |
+| 11 | Kernel Data Types & Endianness |
+| 12 | Linked Lists & Data Structures |
+| 13 | USB Drivers & Endpoints |
+| 14 | I2C, SPI, UART Drivers (Character Devices) |
+| 15 | Concurrency & Synchronization (Spinlocks, Semaphores, RCU) |
+
+---
+
+# Chapter 11 — Kernel Data Types & Endianness
+
+Kernel provides explicitly-sized data types for portability.
+
+## Standard Types
+
+```c
+u8  a; // unsigned 8-bit
+u16 b; // unsigned 16-bit
+u32 c; // unsigned 32-bit
+u64 d; // unsigned 64-bit
+```
+
+- Defined in `<linux/types.h>`
+- `size_t` and `ssize_t` for memory/IO sizes
+
+## Endianness Macros
+
+```c
+#include <asm/byteorder.h>
+u32 val = cpu_to_le32(0x12345678);
+u32 v2  = le32_to_cpu(val);
+
+```
+
+## Pointers and Error Values
+
+- Many kernel functions return ERR_PTR(-errno) instead of NULL for richer error reporting.
+- Use IS_ERR() and PTR_ERR() to handle.
+
+## Learning Notes
+
+- Always prefer explicitly sized types in drivers for portability.
+- Be careful with cross-architecture data transfer (USB, network, storage).
+- Avoid assumptions about pointer size — use unsigned long where necessary.
