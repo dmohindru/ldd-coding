@@ -854,3 +854,463 @@ u32 v2  = le32_to_cpu(val);
 - Always prefer explicitly sized types in drivers for portability.
 - Be careful with cross-architecture data transfer (USB, network, storage).
 - Avoid assumptions about pointer size — use unsigned long where necessary.
+
+---
+
+# Chapter 12 — Linked Lists & Data Structures
+
+Linux provides doubly-linked circular lists in `<linux/list.h>`:
+
+```c
+struct my_node {
+    int data;
+    struct list_head list;
+};
+
+LIST_HEAD(my_list);
+```
+
+## Operations
+
+```c
+struct my_node *n = kmalloc(sizeof(*n), GFP_KERNEL);
+n->data = 42;
+list_add(&n->list, &my_list);
+
+struct my_node *tmp;
+list_for_each_entry(tmp, &my_list, list) {
+    pr_info("Value: %d\n", tmp->data);
+}
+```
+
+## Learning Notes
+
+- List operations are **not thread-safe;** use spinlocks if needed.
+- `list_for_each_entry_safe` allows deletion during iteration.
+
+---
+
+# Chapter 13 — USB Drivers & Endpoints
+
+USB devices communicate through endpoints grouped into interfaces.
+
+## USB Types
+
+- CONTROL — setup & configuration
+- BULK — large data transfer (storage devices)
+- INTERRUPT — small, periodic (keyboards)
+- ISOCHRONOUS — audio/video streaming
+
+## Example USB Skeleton
+
+```c
+static int my_probe(struct usb_interface *intf, const struct usb_device_id *id) {
+    pr_info("USB device connected\n");
+    return 0;
+}
+
+static void my_disconnect(struct usb_interface *intf) {
+    pr_info("USB device disconnected\n");
+}
+
+static struct usb_driver my_driver = {
+    .name = "my_usb",
+    .id_table = my_id_table,
+    .probe = my_probe,
+    .disconnect = my_disconnect,
+};
+
+module_usb_driver(my_driver);
+```
+
+## USB Request Blocks (URBs)
+
+- Allocate with `usb_alloc_urb()`
+- Submit with `usb_submit_urb()`
+- Callback on completion for async transfers
+
+## Learning Notes
+
+- Use `usb_control_msg()` for simple requests.
+- URBs are essential for async bulk/interrupt transfers.
+- Sysfs exposes USB device info (`/sys/bus/usb/devices`).
+
+---
+
+# Chapter 14 — I2C, SPI, UART Drivers (Character Devices)
+
+These are specialized char drivers interfacing with serial buses.
+
+## I2C Example
+
+```c
+struct i2c_client *client;
+i2c_smbus_write_byte_data(client, reg, value);
+int val = i2c_smbus_read_byte_data(client, reg);
+```
+
+## SPI Example
+
+```c
+struct spi_device *spi;
+u8 tx[4] = {0x01,0x02,0x03,0x04};
+struct spi_transfer t = {
+    .tx_buf = tx,
+    .len = sizeof(tx),
+};
+spi_sync_transfer(spi, &t, 1);
+```
+
+## UART Example
+
+- Often exposed via `tty_driver`
+- Use `struct uart_port` + `struct uart_driver`
+- Supports blocking/non-blocking read/write
+
+## Learning Notes
+
+- These drivers are char-device-based and fit into `file_operations`.
+- Concurrency control is critical: use mutexes or spinlocks.
+- I2C/SPI have **master vs slave** roles — always check bus protocol.
+- Rust kernel traits (`i2c::I2cClient`, `spi::SpiDevice`) are analogous.
+
+---
+
+# Chapter 15 — Concurrency & Synchronization
+
+Kernel drivers must handle multiple processes and interrupts safely.
+
+## Spinlocks
+
+```c
+spinlock_t lock;
+spin_lock(&lock);
+// critical section
+spin_unlock(&lock);
+```
+
+## Mutexes
+
+```c
+struct mutex mtx;
+mutex_lock(&mtx);
+// safe to sleep
+mutex_unlock(&mtx);
+```
+
+## Read-Copy-Update (RCU)
+
+```c
+struct my_node *ptr;
+rcu_read_lock();
+ptr = rcu_dereference(my_head);
+rcu_read_unlock();
+```
+
+## Learning Notes
+
+- **Interrupt context:** spinlocks + GFP_ATOMIC
+- **Process context:** mutexes allowed
+- Avoid deadlocks by locking order and minimizing critical section.
+- RCU allows read-mostly data structures without blocking readers.
+
+---
+
+# Summary of Part 3
+
+| Chapter | Focus        | Key Points                                   |
+| ------- | ------------ | -------------------------------------------- |
+| 11      | Kernel Types | u8/u16/u32/u64, endianness, error pointers   |
+| 12      | Linked Lists | list_head, safe iteration, synchronization   |
+| 13      | USB          | Endpoints, URBs, interfaces, async transfers |
+| 14      | I2C/SPI/UART | Serial bus drivers as char devices           |
+| 15      | Concurrency  | Spinlocks, mutexes, RCU, interrupt safety    |
+
+## Learning Map
+
+1. Use explicit types and handle endianness.
+2. Master linked lists and memory-safe iteration.
+3. Understand USB endpoint communication and URBs.
+4. Serial bus drivers (I2C/SPI/UART) are specialized char drivers.
+5. Apply proper locking primitives based on context (spinlock vs mutex).
+
+---
+
+# Part 4 — Linux Device Drivers Ready Reckoner
+
+Chapters 16–20 (DMA, Memory-Mapped Devices, Power Management, Hotplug, Advanced Topics)
+
+# Chapter 16 — Direct Memory Access (DMA)
+
+DMA allows **devices to transfer data directly to/from memory** without CPU intervention.
+
+## DMA Types
+
+- **Consistent / Coherent DMA:** CPU and device always see same data.
+- **Streaming / Normal DMA:** CPU must flush caches.
+
+## DMA API Example
+
+## Scatter-Gather DMA
+
+- Supports non-contiguous memory
+- Often used in network/storage drivers
+- Handled via `struct scatterlist` and `dma_map_sg()`
+
+## Learning Notes
+
+- DMA-safe memory must be allocated with `dma_alloc_coherent` or `dma_map_single`.
+- CPU must not directly access device memory mapped for DMA without proper barriers.
+- Watch out for cache coherency on non-coherent architectures.
+
+---
+
+# Chapter 17 — Memory-Mapped Devices (MMIO)
+
+Many devices expose registers in memory space.
+
+## Mapping MMIO
+
+```c
+#include <linux/io.h>
+
+void __iomem *regs;
+regs = ioremap(phys_addr, size);
+iowrite32(0x1234, regs);
+u32 val = ioread32(regs);
+iounmap(regs);
+
+```
+
+## Learning Notes
+
+- Always use `ioremap` and `iounmap`.
+- Use `wmb()` / `rmb()` to enforce write/read ordering.
+- MMIO is preferred over legacy port-mapped I/O on modern platforms.
+
+---
+
+# Chapter 18 — Power Management (PM)
+
+Drivers must respect system sleep, suspend, and resume.
+
+## PM Callbacks
+
+```c
+static int my_suspend(struct device *dev) { /* save state */ return 0; }
+static int my_resume(struct device *dev) { /* restore state */ return 0; }
+
+static const struct dev_pm_ops my_pm_ops = {
+    .suspend = my_suspend,
+    .resume  = my_resume,
+};
+```
+
+## Runtime PM
+
+- Device can autosuspend when idle
+- APIs: `pm_runtime_enable()`, `pm_runtime_get_sync()`, `pm_runtime_put_sync()`
+
+## Learning Notes
+
+- Suspend/resume must save device state (registers, buffers).
+- Always match runtime PM calls to avoid reference leaks.
+- Critical for battery-powered embedded systems.
+
+---
+
+# Chapter 19 — Hotplug & Device Registration
+
+Linux supports dynamic **plug-and-play** for USB, PCI, I2C, SPI.
+
+## PCI Driver Example
+
+```c
+
+```
+
+## Learning Notes
+
+- Always match `.probe` and `.remove` lifecycle.
+- Use `devm_*` managed resources to simplify cleanup.
+- Hotplug devices require careful interrupt and memory management.
+
+---
+
+# Chapter 20 — Advanced Topics & Kernel Integration
+
+## DMA + Interrupts
+
+- Combine **bottom halves** and DMA for efficient transfers.
+- Avoid sleeping in interrupt context; schedule workqueues for heavy processing.
+
+## Memory Barriers & Atomic Operations
+
+```c
+
+```
+
+## Kernel Modules Best Practices
+
+- Always free memory and IRQs in `exit` function.
+- Avoid busy waiting; prefer wait queues or tasklets.
+- Test on multiple architectures if using explicit sizes or endianness.
+
+## Learning Notes
+
+- Modern kernel drivers use hybrid `interrupt-driven + DMA` for efficiency.
+- Use `devm_*` APIs to reduce boilerplate and resource leaks.
+- Keep critical sections minimal; prefer async processing for high-speed devices.
+
+---
+
+# Summary of Part 4
+
+| Chapter | Focus            | Key Points                                                     |
+| ------- | ---------------- | -------------------------------------------------------------- |
+| 16      | DMA              | dma_alloc_coherent, scatter-gather, CPU/device synchronization |
+| 17      | MMIO             | ioremap, ioread/iowrite, memory barriers                       |
+| 18      | Power Management | suspend/resume, runtime PM, autosuspend                        |
+| 19      | Hotplug          | PCI, USB, device probe/remove, devm resources                  |
+| 20      | Advanced Topics  | DMA+interrupts, atomic operations, kernel best practices       |
+
+## Learning Map
+
+1. Understand DMA flows and cache coherency.
+2. Use MMIO safely with proper ordering.
+3. Implement suspend/resume for device power management.
+4. Register devices properly for hotplug support.
+5. Combine interrupts, DMA, and deferred work efficiently.
+
+---
+
+# Part 5 — LDD3 Mental Map Cheat Sheet
+
+Linux Device Drivers — Kernel Developer Quick Reference
+Target: Linux 6.6 LTS | Hybrid C/Rust perspective
+
+## 1. Kernel Data & Types
+
+| Concept             | C Example           | Notes / Rust Analogy          |
+| ------------------- | ------------------- | ----------------------------- |
+| Fixed-size integers | `u8, u16, u32, u64` | Rust: `u8/u16/u32/u64`        |
+| Endianness          | `cpu_to_le32(val)`  | Rust: `to_le()` / `from_le()` |
+| Error pointers      | `ERR_PTR(-ENOMEM)`  | Rust: `Result<T, Error>`      |
+
+## 2. Memory Management
+
+| Concept         | Example                        | Notes                                            |
+| --------------- | ------------------------------ | ------------------------------------------------ |
+| `kmalloc`       | `kmalloc(128, GFP_KERNEL)`     | GFP_ATOMIC in IRQ, GFP_KERNEL in process context |
+| `vmalloc`       | `vmalloc(4096)`                | Virtually contiguous memory                      |
+| Lookaside cache | `kmem_cache_alloc()`           | High-volume object allocation                    |
+| Per-CPU vars    | `DEFINE_PER_CPU(int, counter)` | Each CPU has separate copy                       |
+| DMA-safe        | `dma_alloc_coherent()`         | CPU/device coherent memory                       |
+
+## 3. I/O & Character Devices
+
+| Bus/Device   | Kernel API                | Notes                                 |
+| ------------ | ------------------------- | ------------------------------------- |
+| UART         | `tty_driver`, `uart_port` | Blocking/non-blocking read/write      |
+| I2C          | `i2c_smbus_read/write`    | Master/slave roles, char-device style |
+| SPI          | `spi_sync_transfer()`     | Blocking or async transfers           |
+| Generic char | `file_operations`         | `.read`, `.write`, `.ioctl`           |
+
+## 4. Blocking & Async I/O
+
+| Concept            | C Example                               | Notes                           |
+| ------------------ | --------------------------------------- | ------------------------------- |
+| Wait queues        | `wait_event_interruptible(queue, cond)` | Sleep until condition           |
+| Poll/select        | `.poll()` with `poll_wait()`            | Non-blocking user-space support |
+| Async notification | `fasync_struct`, `kill_fasync()`        | Signals user-space process      |
+
+## 5. Timers & Deferred Work
+
+| Concept       | Example                                   | Notes                         |
+| ------------- | ----------------------------------------- | ----------------------------- |
+| Kernel timers | `timer_setup()` + `mod_timer()`           | Schedule function later       |
+| Tasklets      | `DECLARE_TASKLET(my_tasklet, func, data)` | Softirq context, cannot sleep |
+| Workqueues    | `DECLARE_WORK(work, func)`                | Process context, can sleep    |
+
+## 6. Interrupts
+
+| Concept     | Example                         | Notes                                 |
+| ----------- | ------------------------------- | ------------------------------------- |
+| Top-half    | `request_irq()` handler         | Quick response, no sleep              |
+| Bottom-half | Tasklets/Workqueues             | Deferred heavy processing             |
+| Shared IRQ  | `IRQF_SHARED` + unique `dev_id` | Check if interrupt is for your device |
+
+## 7. USB Drivers
+
+| Concept    | Example                                | Notes                        |
+| ---------- | -------------------------------------- | ---------------------------- |
+| Endpoints  | CONTROL/BULK/INT/ISO                   | Direction: IN/OUT            |
+| URB        | `usb_alloc_urb()` + `usb_submit_urb()` | Async transfer with callback |
+| Interfaces | `struct usb_interface`                 | Group endpoints by function  |
+
+## 8. PCI & Hotplug
+
+| Concept    | Example                           | Notes                                   |
+| ---------- | --------------------------------- | --------------------------------------- |
+| PCI driver | `pci_driver`, `.probe`, `.remove` | Devm-managed resources simplify cleanup |
+| Hotplug    | USB/PCI dynamic detection         | Handle attach/detach cleanly            |
+
+## 9. Power Management
+
+| Concept        | Example                                           | Notes                    |
+| -------------- | ------------------------------------------------- | ------------------------ |
+| Suspend/Resume | `.suspend = my_suspend`                           | Save device state        |
+| Runtime PM     | `pm_runtime_get_sync()` / `pm_runtime_put_sync()` | Autosuspend idle devices |
+
+## 10. Concurrency & Synchronization
+
+| Concept   | Example                             | Notes                          |
+| --------- | ----------------------------------- | ------------------------------ |
+| Spinlocks | `spin_lock()/spin_unlock()`         | IRQ-safe, cannot sleep         |
+| Mutex     | `mutex_lock()/unlock()`             | Sleep allowed, process context |
+| RCU       | `rcu_read_lock()/rcu_read_unlock()` | Read-mostly, wait-free reads   |
+| Atomic    | `atomic_inc()/atomic_dec()`         | For counters in IRQ or SMP     |
+
+## 11. Advanced DMA + MMIO
+
+| Concept        | Example                            | Notes                             |
+| -------------- | ---------------------------------- | --------------------------------- |
+| DMA coherent   | `dma_alloc_coherent()`             | CPU & device always see same data |
+| MMIO           | `ioremap()/iowrite32()/ioread32()` | Use memory barriers               |
+| Scatter-gather | `dma_map_sg()`                     | Non-contiguous memory support     |
+
+## 12. Best Practices
+
+- Always `release resources` in `exit` or `.remove`.
+- Use `devm_` APIs to simplify cleanup.
+- Prefer `async + bottom-half processing` over busy-waiting.
+- Keep critical sections minimal.
+- Test with `non-blocking and interrupt contexts`.
+
+## Quick Mental Map Flow
+
+```csharp
+[User-space] <-> [Char device / Bus driver]
+                   |
+                   v
+           [Blocking / Non-blocking I/O]
+                   |
+        ---------------------------
+        |                         |
+    [Interrupts]             [Timers / Tasklets / Workqueues]
+        |                         |
+   [DMA + MMIO]                [Deferred Work]
+        |                         |
+   [PCI/USB/I2C/SPI/UART]   [Concurrency & Sync]
+        |
+  [Power Management + Hotplug]
+```
+
+## Rust Kernel Analogies
+
+- `kmalloc` → `alloc::<T>()` / `Box<T>`
+- `ioremap` → `IoMem::map()`
+- `tasklet` → `KernelTasklet::schedule()`
+- `workqueue` → `WorkQueue::queue()`
+- `spinlock` → `SpinLock<T>`
+- `per-CPU variable` → `PerCpu<T>`
