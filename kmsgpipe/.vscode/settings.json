@@ -1,0 +1,9 @@
+{
+  "files.associations": {
+    "module.h": "c",
+    "init.h": "c",
+    "moduleparam.h": "c",
+    "cdev.h": "c",
+    "seq_file.h": "c"
+  }
+}

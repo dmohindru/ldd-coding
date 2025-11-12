@@ -7,3 +7,36 @@ cmake-build-debug/
 *.mod
 *.mod.c
 .idea
+
+# Rust build artifacts
+/target/
+target/
+Cargo.lock
+
+# Rust IDE and editor files
+*.swp
+*.swo
+*~
+.DS_Store
+*.iml
+.project
+.classpath
+.c9/
+*.sublime-workspace
+
+# Rust build output
+*.a
+*.so
+*.dylib
+*.dll
+*.exe
+*.out
+
+# Debug info
+*.dSYM/
+*.su
+*.gch
+*.pch
+
+# OS-specific
+Thumbs.db
