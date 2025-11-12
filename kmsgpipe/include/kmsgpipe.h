@@ -1,10 +1,12 @@
 #ifndef KMSGPIPE_H
 #define KMSGPIPE_H
+
 #ifdef __KERNEL__
 #include <linux/kernel.h>
 #else /* Userland */
 #include <stddef.h>
 #include <stdint.h>
+#include <stdbool.h>
 #include <sys/types.h>
 typedef int64_t ktime_t;
 #endif
@@ -38,7 +40,7 @@ typedef struct kmsgpipe_buffer
  *
  * Returns:
  *   0 on success
- *  -EINVAL if arguments invalid //TODO check if this is valid option
+ *  -EINVAL if arguments invalid
  */
 int kmsgpipe_init(
     kmsgpipe_buffer_t *buf,
@@ -48,18 +50,21 @@ int kmsgpipe_init(
     size_t data_size);
 
 /**
- * kmsgpipe_push - Push a data into circular buffer
+ * kmsgpipe_push - Push a data block into the circular buffer
  * @buf:        pointer to kmsgpipe_buffer
- * @data:       Actual data that needs to be pushed to circular buffer
- * @len:        Length of data being pushed
- * @uid_t:      uid of a calling process pushing the data
- * @gid_t:      gid of a calling process pushing the data
- * @timestamp:  timestamp when a push request is made
- ** Returns:
- *   0 on success
- *  -EINVAL if arguments invalid or buffer is full //TODO check if this is valid option
+ * @data:       pointer to input data
+ * @len:        length of data to push
+ * @uid:        uid of caller
+ * @gid:        gid of caller
+ * @timestamp:  time of push operation
+ *
+ * Returns:
+ *   >0  number of bytes copied
+ *  -EINVAL invalid arguments
+ *  -ENOSPC buffer full
+ *  -EMSGSIZE message too large
  */
-int kmsgpipe_push(
+ssize_t kmsgpipe_push(
     kmsgpipe_buffer_t *buf,
     const uint8_t *data,
     size_t len,
@@ -68,17 +73,17 @@ int kmsgpipe_push(
     ktime_t timestamp);
 
 /**
- * kmsgpipe_pop - Pops a data from a circular buffer
+ * kmsgpipe_pop - Pop a data block from the circular buffer
  * @buf:        pointer to kmsgpipe_buffer
- * @out_buf:    Output buffer where the data would be copied
- * @uid_t:      uid of a calling process requesting the data
- * @gid_t:      gid of a calling process requesting the data
+ * @out_buf:    output buffer (must be >= data_size bytes)
+ * @uid:        uid of caller
+ * @gid:        gid of caller
+ *
  * Returns:
- * - on success returns num of bytes transferred to @out_buf output buffer
- *  -EINVAL if arguments invalid or buffer is empty //TODO check if this is valid option maybe create an enum for full, empty etc
- */
-/* TODO: Think about this requirement about privilege control.
-If a message has been push by a privileged process it should only be able to retrieve by same privileged process.
+ *   >0  number of bytes copied
+ *  -EINVAL invalid arguments
+ *  -ENODATA buffer empty
+ *  -EACCES unauthorized read
  */
 ssize_t kmsgpipe_pop(
     kmsgpipe_buffer_t *buf,
@@ -87,25 +92,27 @@ ssize_t kmsgpipe_pop(
     gid_t gid);
 
 /**
- * kmsgpipe_cleanup_expired - Cleanup/Remove the expired messages
- * @buf:        pointer to kmsgpipe_buffer
- * @expiry_ms:  age of messages in ms that need to be deleted
+ * kmsgpipe_cleanup_expired - Remove expired messages
+ * @buf:        pointer to buffer
+ * @expiry_ms:  expiry threshold in milliseconds
+ *
  * Returns:
- *  - on success returns num of messages cleaned/deleted
- *  -EINVAL if arguments invalid or operation failed //TODO check if this is valid option maybe create an enum for full, empty etc
+ *   >=0 number of messages deleted
+ *   <0  error code
  */
-size_t kmsgpipe_cleanup_expired(kmsgpipe_buffer_t *buf, uint64_t expiry_ms);
+ssize_t kmsgpipe_cleanup_expired(kmsgpipe_buffer_t *buf, uint64_t expiry_ms);
 
 /**
- * kmsgpipe_get_message_count - return number of messages in the buffer
- * @buf:        pointer to kmsgpipe_buffer
+ * kmsgpipe_get_message_count - Get number of valid messages
+ * @buf: pointer to buffer
+ *
  * Returns:
- *  - on success returns num of messages available in buffer
- *  -EINVAL if arguments invalid or operation failed //TODO check if this is valid option maybe create an enum for full, empty etc
+ *   >=0 message count
+ *   <0  error code
  */
-size_t kmsgpipe_get_message_count(kmsgpipe_buffer_t *buf);
+ssize_t kmsgpipe_get_message_count(kmsgpipe_buffer_t *buf);
 
-#endif
+#endif /* KMSGPIPE_H */
 
 /*
 Few important computations
