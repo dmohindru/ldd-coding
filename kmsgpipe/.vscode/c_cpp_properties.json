@@ -3,7 +3,8 @@
     {
       "name": "Linux Kernel Module",
       "includePath": [
-        "${workspaceFolder}/**",
+        "${workspaceFolder}/include",
+        "${workspaceFolder}/third_party/unity/src",
         "/usr/src/linux-headers-6.14.0-35-generic/include",
         "/usr/src/linux-headers-6.14.0-35-generic/include/uapi",
         "/usr/src/linux-headers-6.14.0-35-generic/include/generated",
@@ -19,7 +20,11 @@
     },
     {
       "name": "Userland Code",
-      "includePath": ["${workspaceFolder}/**", "/usr/include"],
+      "includePath": [
+        "${workspaceFolder}/include",
+        "${workspaceFolder}/third_party/unity/src",
+        "/usr/include"
+      ],
       "defines": [],
       "compilerPath": "/usr/bin/gcc",
       "cStandard": "c11",
