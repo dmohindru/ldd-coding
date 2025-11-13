@@ -3,11 +3,15 @@
 
 #ifdef __KERNEL__
 #include <linux/kernel.h>
+#include <linux/errno.h>
+#include <linux/string.h>
 #else /* Userland */
 #include <stddef.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include <errno.h>
 #include <sys/types.h>
+#include <string.h>
 typedef int64_t ktime_t;
 #endif
 
