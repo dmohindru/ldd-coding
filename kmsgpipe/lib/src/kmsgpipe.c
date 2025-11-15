@@ -20,3 +20,13 @@ int kmsgpipe_init(
 
     return 0;
 }
+
+ssize_t kmsgpipe_push(kmsgpipe_buffer_t *buf,
+                      const uint8_t *data,
+                      size_t len,
+                      uid_t uid,
+                      gid_t gid,
+                      ktime_t timestamp)
+{
+    return -EINVAL;
+}
