@@ -87,7 +87,7 @@ ssize_t kmsgpipe_push(
  *   >0  number of bytes copied
  *  -EINVAL invalid arguments
  *  -ENODATA buffer empty
- *  -EACCES unauthorized read
+ *  -EACCESS unauthorized read
  */
 ssize_t kmsgpipe_pop(
     kmsgpipe_buffer_t *buf,

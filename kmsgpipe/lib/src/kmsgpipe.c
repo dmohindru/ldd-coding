@@ -28,5 +28,27 @@ ssize_t kmsgpipe_push(kmsgpipe_buffer_t *buf,
                       gid_t gid,
                       ktime_t timestamp)
 {
-    return -EINVAL;
+    if (len > buf->data_size)
+    {
+        return -EMSGSIZE;
+    }
+
+    if (((buf->head + 1) % buf->capacity) == buf->tail)
+    {
+        return -ENOSPC;
+    }
+
+    uint8_t *src_addr = buf->base + (buf->head * buf->data_size);
+
+    memcpy(src_addr, data, len);
+
+    buf->records[buf->head].len = len;
+    buf->records[buf->head].owner_uid = uid;
+    buf->records[buf->head].owner_gid = gid;
+    buf->records[buf->head].valid = true;
+    buf->records[buf->head].timestamp = timestamp;
+
+    buf->head = (buf->head + 1) % buf->capacity;
+
+    return len;
 }

@@ -61,7 +61,7 @@ void should_add_to_buffer_and_update_metadata_records(void)
     TEST_ASSERT_EQUAL_INT_MESSAGE(strlen((char *)forth_data), forth_ret_val, "Failed on forth data items push");
 
     // Assert head and tail pointer
-    TEST_ASSERT_EQUAL_INT_MESSAGE(3, buf.head, "Failed on head field after insertions");
+    TEST_ASSERT_EQUAL_INT_MESSAGE(4, buf.head, "Failed on head field after insertions");
     TEST_ASSERT_EQUAL_INT_MESSAGE(0, buf.tail, "Failed on tail field after insertions");
 
     // Assert metadata array
@@ -89,9 +89,23 @@ void should_add_to_buffer_and_update_metadata_records(void)
 
 void should_return_no_space_error_when_buffer_is_full(void)
 {
+    kmsgpipe_push(&buf, first_data, strlen((char *)first_data), first_uid, first_gid, first_ts);
+    kmsgpipe_push(&buf, second_data, strlen((char *)second_data), second_uid, second_gid, second_ts);
+    kmsgpipe_push(&buf, third_data, strlen((char *)third_data), third_uid, third_gid, third_ts);
+    kmsgpipe_push(&buf, forth_data, strlen((char *)forth_data), forth_uid, forth_gid, forth_ts);
+
+    ssize_t ret_val = kmsgpipe_push(&buf, first_data, strlen((char *)first_data), first_uid, first_gid, first_ts);
+
+    TEST_ASSERT_EQUAL_INT_MESSAGE(-ENOSPC, ret_val, "Failed on return value when buffer is full");
 }
 
-void should_return_message_size_error_when_data_item_larger_than_data_size() {}
+void should_return_message_size_error_when_data_item_larger_than_data_size()
+{
+    uint8_t long_data[] = "Quick brown fox jumped over a lazy doy";
+    ssize_t ret_val = kmsgpipe_push(&buf, long_data, strlen((char *)long_data), first_uid, first_gid, first_ts);
+
+    TEST_ASSERT_EQUAL_INT_MESSAGE(-EMSGSIZE, ret_val, "Failed on return value when len of data is larger than DATA_SIZE");
+}
 
 void should_pop_items_in_order_they_were_pushed(void)
 {
@@ -105,6 +119,9 @@ void should_return_unauthorized_access_error_when_poping_no_allowed_item(void)
 {
 }
 
+void should_wrap_around_head_pointer_and_add_data_item_to_buffer(void)
+{
+}
 void should_remove_expired_data_items_from_buffer(void)
 {
 }
@@ -119,6 +136,7 @@ int main(void)
     RUN_TEST(should_add_to_buffer_and_update_metadata_records);
     RUN_TEST(should_return_no_space_error_when_buffer_is_full);
     RUN_TEST(should_return_message_size_error_when_data_item_larger_than_data_size);
+    RUN_TEST(should_wrap_around_head_pointer_and_add_data_item_to_buffer);
     RUN_TEST(should_pop_items_in_order_they_were_pushed);
     RUN_TEST(should_return_no_data_error_when_poping_from_empty_buffer);
     RUN_TEST(should_return_unauthorized_access_error_when_poping_no_allowed_item);
