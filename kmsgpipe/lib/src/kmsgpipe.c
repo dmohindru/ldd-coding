@@ -1,5 +1,23 @@
 #include "kmsgpipe.h"
 
+static bool is_valid_access(
+    uid_t requesting_uid,
+    gid_t requesting_gid,
+    uid_t record_uid,
+    gid_t record_gid)
+{
+    if (requesting_uid == 0)
+        return true;
+
+    if (requesting_uid == record_uid)
+        return true;
+
+    if (requesting_gid == record_gid)
+        return true;
+
+    return false;
+}
+
 int kmsgpipe_init(
     kmsgpipe_buffer_t *buf,
     uint8_t *base,
@@ -17,6 +35,10 @@ int kmsgpipe_init(
     /* Zero-initialize payload and metadata buffers */
     memset(base, 0, capacity * data_size);
     memset(records, 0, capacity * sizeof(kmsg_record_t));
+    for (size_t i = 0; i < capacity; i++)
+    {
+        records[i].valid = false;
+    }
 
     return 0;
 }
@@ -33,7 +55,7 @@ ssize_t kmsgpipe_push(kmsgpipe_buffer_t *buf,
         return -EMSGSIZE;
     }
 
-    if (((buf->head + 1) % buf->capacity) == buf->tail)
+    if (buf->records[buf->head].valid)
     {
         return -ENOSPC;
     }
@@ -51,4 +73,29 @@ ssize_t kmsgpipe_push(kmsgpipe_buffer_t *buf,
     buf->head = (buf->head + 1) % buf->capacity;
 
     return len;
+}
+
+ssize_t kmsgpipe_pop(
+    kmsgpipe_buffer_t *buf,
+    uint8_t *out_buf,
+    uid_t uid,
+    gid_t gid)
+{
+    if (!buf->records[buf->tail].valid)
+        return -ENODATA;
+
+    if (!is_valid_access(
+            uid,
+            gid,
+            buf->records[buf->tail].owner_uid,
+            buf->records[buf->tail].owner_gid))
+        return -EACCES;
+
+    uint8_t *src_addr = buf->base + (buf->tail * buf->data_size);
+    memcpy(out_buf, src_addr, buf->records[buf->tail].len);
+    buf->records[buf->tail].valid = false;
+    ssize_t ret_val = buf->records[buf->tail].len;
+    buf->tail = (buf->tail + 1) % buf->capacity;
+
+    return ret_val;
 }
