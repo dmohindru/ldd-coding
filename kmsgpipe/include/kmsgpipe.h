@@ -12,7 +12,8 @@
 #include <errno.h>
 #include <sys/types.h>
 #include <string.h>
-typedef int64_t ktime_t;
+#include <stdlib.h>
+typedef uint64_t ktime_t;
 #endif
 
 typedef struct kmsg_record
@@ -98,7 +99,7 @@ ssize_t kmsgpipe_pop(
 /**
  * kmsgpipe_cleanup_expired - Remove expired messages
  * @buf:        pointer to buffer
- * @expiry_ms:  expiry threshold in milliseconds
+ * @expiry_ms:  absolute timestamp in milliseconds since Unix epoch
  *
  * Returns:
  *   >=0 number of messages deleted
@@ -117,15 +118,3 @@ ssize_t kmsgpipe_cleanup_expired(kmsgpipe_buffer_t *buf, uint64_t expiry_ms);
 ssize_t kmsgpipe_get_message_count(kmsgpipe_buffer_t *buf);
 
 #endif /* KMSGPIPE_H */
-
-/*
-Few important computations
-uint8_t *slot_addr = base + (index * data_size);
-kmsg_record_t *rec = &records[index];
-
-write at index = head
-head = (head + 1) % capacity
-
-read at index = tail
-tail = (tail + 1) % capacity
-*/

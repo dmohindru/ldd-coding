@@ -21,9 +21,9 @@ static gid_t third_gid = 2002;
 static gid_t forth_gid = 2003;
 
 static ktime_t first_ts = 10000;
-static ktime_t second_ts = 10001;
-static ktime_t third_ts = 10002;
-static ktime_t forth_ts = 10003;
+static ktime_t second_ts = 10010;
+static ktime_t third_ts = 10020;
+static ktime_t forth_ts = 10030;
 
 static kmsgpipe_buffer_t buf;
 static uint8_t base_buffer[TEST_CAPACITY * TEST_DATA_SIZE];
@@ -198,14 +198,59 @@ void should_wrap_around_head_pointer_and_add_data_item_to_buffer(void)
     TEST_ASSERT_EQUAL_INT_MESSAGE(3, buf.tail, "Failed on tail pointer value on wrapped around push operation check");
 }
 
-// TODO: Complete it
 void should_remove_expired_data_items_from_buffer(void)
 {
+    kmsgpipe_push(&buf, first_data, strlen((char *)first_data), first_uid, first_gid, first_ts);
+    kmsgpipe_push(&buf, second_data, strlen((char *)second_data), second_uid, second_gid, second_ts);
+    kmsgpipe_push(&buf, third_data, strlen((char *)third_data), third_uid, third_gid, third_ts);
+    kmsgpipe_push(&buf, forth_data, strlen((char *)forth_data), forth_uid, forth_gid, forth_ts);
+
+    ssize_t delete_count = kmsgpipe_cleanup_expired(&buf, second_ts + 5);
+    TEST_ASSERT_EQUAL_INT_MESSAGE(2, delete_count, "Failed on deleted message count on removing expired messages from buf");
+    TEST_ASSERT_EQUAL_INT_MESSAGE(0, buf.head, "Failed on head field when removing expired messages");
+    TEST_ASSERT_EQUAL_INT_MESSAGE(2, buf.tail, "Failed on tail field when removing expired messages");
 }
 
-// TODO: Complete it
+void should_not_remove_expired_data_from_empty_buffer(void)
+{
+    // kmsgpipe_push(&buf, first_data, strlen((char *)first_data), first_uid, first_gid, first_ts);
+    // kmsgpipe_push(&buf, second_data, strlen((char *)second_data), second_uid, second_gid, second_ts);
+    // kmsgpipe_push(&buf, third_data, strlen((char *)third_data), third_uid, third_gid, third_ts);
+    // kmsgpipe_push(&buf, forth_data, strlen((char *)forth_data), forth_uid, forth_gid, forth_ts);
+
+    ssize_t delete_count = kmsgpipe_cleanup_expired(&buf, second_ts + 5);
+    TEST_ASSERT_EQUAL_INT_MESSAGE(0, delete_count, "Failed on deleted message count on removing expired messages from buf");
+    TEST_ASSERT_EQUAL_INT_MESSAGE(0, buf.head, "Failed on head field when removing expired messages");
+    TEST_ASSERT_EQUAL_INT_MESSAGE(0, buf.tail, "Failed on tail field when removing expired messages");
+}
+
 void should_get_correct_data_item_count_from_buffer(void)
 {
+    kmsgpipe_push(&buf, first_data, strlen((char *)first_data), first_uid, first_gid, first_ts);
+    kmsgpipe_push(&buf, second_data, strlen((char *)second_data), second_uid, second_gid, second_ts);
+    kmsgpipe_push(&buf, third_data, strlen((char *)third_data), third_uid, third_gid, third_ts);
+    kmsgpipe_push(&buf, forth_data, strlen((char *)forth_data), forth_uid, forth_gid, forth_ts);
+
+    ssize_t count = kmsgpipe_get_message_count(&buf);
+    TEST_ASSERT_EQUAL_INT_MESSAGE(4, count, "Failed on message count from buffer");
+}
+
+void should_get_correct_data_item_count_from_buffer_when_head_is_wrapped_around(void)
+{
+    kmsgpipe_push(&buf, first_data, strlen((char *)first_data), first_uid, first_gid, first_ts);
+    kmsgpipe_push(&buf, second_data, strlen((char *)second_data), second_uid, second_gid, second_ts);
+    kmsgpipe_push(&buf, third_data, strlen((char *)third_data), third_uid, third_gid, third_ts);
+    kmsgpipe_push(&buf, forth_data, strlen((char *)forth_data), forth_uid, forth_gid, forth_ts);
+    uint8_t out_buf[TEST_DATA_SIZE];
+
+    kmsgpipe_pop(&buf, out_buf, first_uid, first_gid);
+    kmsgpipe_pop(&buf, out_buf, second_uid, second_gid);
+    kmsgpipe_pop(&buf, out_buf, third_uid, third_gid);
+
+    kmsgpipe_push(&buf, first_data, strlen((char *)first_data), first_uid, first_gid, first_ts);
+
+    ssize_t count = kmsgpipe_get_message_count(&buf);
+    TEST_ASSERT_EQUAL_INT_MESSAGE(2, count, "Failed on message count from buffer when head is wrapped around");
 }
 
 int main(void)
@@ -221,7 +266,9 @@ int main(void)
     RUN_TEST(should_authorized_and_return_data_when_poping_process_uid_different_gid_same);
     RUN_TEST(should_wrap_around_head_pointer_and_add_data_item_to_buffer);
     RUN_TEST(should_remove_expired_data_items_from_buffer);
+    RUN_TEST(should_not_remove_expired_data_from_empty_buffer);
     RUN_TEST(should_get_correct_data_item_count_from_buffer);
+    RUN_TEST(should_get_correct_data_item_count_from_buffer_when_head_is_wrapped_around);
 
     return UNITY_END();
 }

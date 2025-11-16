@@ -93,3 +93,29 @@ ssize_t kmsgpipe_pop(
 
     return ret_val;
 }
+
+ssize_t kmsgpipe_get_message_count(kmsgpipe_buffer_t *buf)
+{
+    ssize_t count = 0;
+
+    /* Count all valid messages in the buffer */
+    for (size_t i = 0; i < buf->capacity; i++)
+    {
+        if (buf->records[i].valid)
+            count++;
+    }
+
+    return count;
+}
+
+ssize_t kmsgpipe_cleanup_expired(kmsgpipe_buffer_t *buf, uint64_t expiry_ms)
+{
+    int expired_count = 0;
+    while (buf->records[buf->tail].valid && buf->records[buf->tail].timestamp < expiry_ms)
+    {
+        buf->records[buf->tail].valid = false;
+        buf->tail = (buf->tail + 1) % buf->capacity;
+        expired_count++;
+    }
+    return expired_count;
+}
