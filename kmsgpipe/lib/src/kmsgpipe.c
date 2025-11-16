@@ -36,9 +36,7 @@ int kmsgpipe_init(
     memset(base, 0, capacity * data_size);
     memset(records, 0, capacity * sizeof(kmsg_record_t));
     for (size_t i = 0; i < capacity; i++)
-    {
         records[i].valid = false;
-    }
 
     return 0;
 }
@@ -51,14 +49,10 @@ ssize_t kmsgpipe_push(kmsgpipe_buffer_t *buf,
                       ktime_t timestamp)
 {
     if (len > buf->data_size)
-    {
         return -EMSGSIZE;
-    }
 
     if (buf->records[buf->head].valid)
-    {
         return -ENOSPC;
-    }
 
     uint8_t *src_addr = buf->base + (buf->head * buf->data_size);
 
