@@ -6,5 +6,8 @@
     "cdev.h": "c",
     "seq_file.h": "c"
   },
-  "cmake.ignoreCMakeListsMissing": true
+  "cmake.ignoreCMakeListsMissing": true,
+  "cSpell.words": ["kmsgpipe"],
+  "C_Cpp.intelliSenseEngine": "default",
+  "C_Cpp.intelliSenseCacheSize": 104857600
 }
