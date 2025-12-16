@@ -1,5 +1,19 @@
 # kmsgpipe_basic driver — Lab 1
 
+## Driver 1 kmsgpipe_basic
+
+- Takes module params while loading for amount of buffer memory. Throws error is module param value is greater than 10MB
+- Buffer is stored at device level.
+- Any process can write to the buffer. On write previous buffer is erased, and data is copied to the buffer. If request to write data is greater than buffer size throw error.
+- All process will read from same buffer. Experiment how file read pointer behaves per process.
+
+## Driver 2 kmsgpipe_basic_1
+
+- Takes module params while loading for amount of buffer memory. Throws error is module param value is greater than 10MB
+- Buffer is stored at per process level open/release lifecycle.
+- Any process can write to the buffer. On write previous buffer is erased, and data is copied to the buffer. If request to write data is greater than buffer size throw error.
+- Experiment how per read/write per process behaves.
+
 📚 Purpose
 
 This driver is a simple character device used for the lab exercise. The README documents the important design decision used in this implementation: the driver currently allocates a single per-device buffer (shared by all opens of the device). A later lab will add a second driver that demonstrates per-open allocation (one buffer per open()).

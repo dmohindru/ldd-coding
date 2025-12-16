@@ -27,6 +27,7 @@ struct kmsgpipe_char_driver
 {
     void *data;
     unsigned long size;
+    size_t data_len;
     struct mutex mutex;
     struct cdev char_dev;
 };
@@ -78,7 +79,9 @@ static int __init kmsgpipe_module_init(void)
         return ret;
     }
 
+    /* size is the buffer capacity; data_len tracks how much of it is used */
     char_driver_p->size = KMSGPIPE_DEFAULT_BUFFER_SIZE;
+    char_driver_p->data_len = 0;
     mutex_init(&char_driver_p->mutex);
 
     cdev_init(&char_driver_p->char_dev, &kmsgpipe_fops);
@@ -140,5 +143,87 @@ int kmsgpipe_release(struct inode *inode_p, struct file *file_p)
     return 0;
 }
 
+ssize_t kmsgpipe_write(struct file *file_p, const char __user *buf, size_t count, loff_t *f_pos)
+{
+    kmsgpipe_char_driver_t *dev;
+
+    if (!file_p)
+        return -EINVAL;
+
+    dev = file_p->private_data;
+    if (!dev || !dev->data)
+        return -ENODEV;
+
+    pr_info("kmsgpipe_write: write() system call invoked for %lu bytes\n", count);
+
+    /* bounds check against buffer capacity */
+    if (count > dev->size)
+        return -EFAULT;
+
+    /* protect device buffer and offsets */
+    mutex_lock(&dev->mutex);
+
+    /* clear previous contents and copy new data */
+    memset(dev->data, 0, dev->size);
+    if (copy_from_user(dev->data, buf, count))
+    {
+        mutex_unlock(&dev->mutex);
+        return -EFAULT;
+    }
+
+    /* store current used length */
+    dev->data_len = count;
+
+    /* advance file position (use *f_pos, not file->f_pos) */
+    if (f_pos)
+        *f_pos += count;
+
+    pr_info("kmsgpipe_write: wrote %lu bytes to device buffer\n", count);
+
+    mutex_unlock(&dev->mutex);
+    return count;
+}
+
+ssize_t kmsgpipe_read(struct file *file_p, char __user *buf, size_t count, loff_t *f_pos)
+{
+    kmsgpipe_char_driver_t *dev;
+    size_t avail;
+
+    if (!file_p)
+        return -EINVAL;
+
+    dev = file_p->private_data;
+    if (!dev || !dev->data)
+        return -ENODEV;
+
+    pr_info("kmsgpipe_read: read() system call invoked for %lu bytes\n", count);
+
+    mutex_lock(&dev->mutex);
+
+    /* if file position beyond stored data, nothing to read */
+    if (!dev->data_len || (f_pos && *f_pos >= (loff_t)dev->data_len))
+    {
+        mutex_unlock(&dev->mutex);
+        return 0;
+    }
+
+    avail = dev->data_len - (f_pos ? (size_t)*f_pos : 0);
+    if (count > avail)
+        count = avail;
+
+    if (copy_to_user(buf, dev->data + (f_pos ? *f_pos : 0), count))
+    {
+        mutex_unlock(&dev->mutex);
+        return -EFAULT;
+    }
+
+    /* advance file position */
+    if (f_pos)
+        *f_pos += count;
+
+    mutex_unlock(&dev->mutex);
+
+    return count;
+}
 module_init(kmsgpipe_module_init);
 module_exit(kmsgpipe_module_exit);
