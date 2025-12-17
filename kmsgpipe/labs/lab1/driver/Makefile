@@ -36,18 +36,36 @@ EXTRA_INCLUDES := \
 EXTRA_CFLAGS ?= $(EXTRA_INCLUDES)
 
 .PHONY: all clean insmod rmmod modinfo
+# Ensure `all`, `insmod`, `rmmod`, and `modinfo` are treated as phony
+# targets so `make all` and `make insmod` will always run the recipe.
+# (Note: `insmod` depends on `all` to build artifacts first.)
 
 all:
 	$(MAKE) -C "$(KDIR)" M="$(PWD)" modules EXTRA_CFLAGS="$(EXTRA_CFLAGS)"
 	@mkdir -p "$(BUILD_DIR)"
-	@mv -f *.ko *.mod.c *.mod.o *.mod.* *.o *.symvers *.d *.cmd *.order "$(BUILD_DIR)" 2>/dev/null || true
+	# move common build artifacts (including some dot-prefixed command files)
+	@mv -f \
+		*.ko \
+		*.mod.c \
+		*.mod.o \
+		*.mod.* \
+		*.mod \
+		*.o \
+		*.symvers \
+		*.d \
+		*.cmd \
+		*.order \
+		.kmsgpipe_basic* \
+		.*.cmd \
+		.*module* \
+		"$(BUILD_DIR)" 2>/dev/null || true
 
 
 clean:
 	$(MAKE) -C "$(KDIR)" M="$(PWD)" clean
 	@rm -rf "$(BUILD_DIR)"
 
-insmod: all
+insmod:
 	sudo insmod "$(BUILD_DIR)/kmsgpipe_basic.ko"
 
 rmmod:
@@ -55,3 +73,22 @@ rmmod:
 
 modinfo:
 	modinfo "$(BUILD_DIR)/kmsgpipe_basic.ko" || true
+
+# Create/remove device node in /dev for the driver. This uses the
+# name the driver passed to alloc_chrdev_region ("kmsgpipe") and looks
+# up the major number from /proc/devices. Prefer adding `class_create`
+# + `device_create` in the module so udev handles this automatically;
+# these targets are provided for convenience in the lab environment.
+.PHONY: devnode rmdev
+devnode: insmod
+	@MAJOR=$$(awk '/kmsgpipe/ {print $$1}' /proc/devices); \
+	if [ -z "$$MAJOR" ]; then \
+		echo "Device not registered; load module first (make insmod)"; \
+		exit 1; \
+	fi; \
+	sudo mknod /dev/kmsgpipe c $$MAJOR 0 || true; \
+	sudo chmod 0666 /dev/kmsgpipe || true; \
+	echo "/dev/kmsgpipe created (major=$$MAJOR, minor=0)"
+
+rmdev:
+	-@sudo rm -f /dev/kmsgpipe || true
