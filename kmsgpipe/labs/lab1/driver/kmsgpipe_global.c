@@ -52,7 +52,7 @@ static int __init kmsgpipe_module_init(void)
 {
     int ret;
 
-    ret = alloc_chrdev_region(&kmsgpipe_devno, 0, 1, "kmsgpipe");
+    ret = alloc_chrdev_region(&kmsgpipe_devno, 0, 1, "kmsgpipe_global");
     if (ret)
     {
         pr_err("kmsgpipe: alloc_chrdev_region failed: %d\n", ret);
