@@ -35,7 +35,7 @@ all:
 		*.d \
 		*.cmd \
 		*.order \
-		.kmsgpipe_basic* \
+		.kmsgpipe_global* \
 		.*.cmd \
 		.*module* \
 		"$(BUILD_DIR)" 2>/dev/null || true
