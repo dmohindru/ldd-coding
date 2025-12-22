@@ -10,7 +10,6 @@
 #include <linux/cdev.h>
 #include <linux/mutex.h>
 
-#include <linux/uaccess.h> /* copy_*_user */
 #include "kmsgpipe_core.h"
 #include "kmsgpipe_module.h"
 

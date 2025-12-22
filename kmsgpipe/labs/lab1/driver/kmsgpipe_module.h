@@ -3,6 +3,7 @@
 
 #include <linux/fs.h>
 #include <linux/types.h>
+#include <linux/uaccess.h>
 
 int kmsgpipe_module_init(void);
 void kmsgpipe_module_exit(void);

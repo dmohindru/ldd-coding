@@ -1,8 +1,5 @@
 #include <linux/module.h>
-
-/* real init/exit implemented elsewhere */
-int kmsgpipe_module_init(void);
-void kmsgpipe_module_exit(void);
+#include "kmsgpipe_module.h"
 
 /* local wrappers (required!) */
 static int __init kmsgpipe_init(void)
