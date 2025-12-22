@@ -1,4 +1,5 @@
 obj-m := kmsgpipe_global.o
+kmsgpipe_global-objs := kmsgpipe_module.o kmsgpipe_fops.o kmsgpipe_core.o
 
 KDIR ?= /lib/modules/$(shell uname -r)/build
 

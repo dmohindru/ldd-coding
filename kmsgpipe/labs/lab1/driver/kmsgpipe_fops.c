@@ -3,9 +3,7 @@
 
 #include <linux/kernel.h>
 #include <linux/slab.h>  /* kmalloc() */
-#include <linux/fs.h>    /* everything... */
 #include <linux/errno.h> /* error codes */
-#include <linux/types.h> /* size_t */
 #include <linux/proc_fs.h>
 #include <linux/fcntl.h> /* O_ACCMODE */
 #include <linux/seq_file.h>
@@ -13,6 +11,8 @@
 #include <linux/mutex.h>
 
 #include <linux/uaccess.h> /* copy_*_user */
+#include "kmsgpipe_core.h"
+#include "kmsgpipe_module.h"
 
 MODULE_AUTHOR("Dhruv Mohindru");
 MODULE_LICENSE("Dual BSD/GPL");
@@ -22,16 +22,6 @@ static int kmsgpipe_char_minor = 0;
 static dev_t kmsgpipe_devno;
 
 #define KMSGPIPE_DEFAULT_BUFFER_SIZE 4096
-
-struct kmsgpipe_char_driver
-{
-    void *data;
-    unsigned long size;
-    size_t data_len;
-    struct mutex mutex;
-    struct cdev char_dev;
-};
-typedef struct kmsgpipe_char_driver kmsgpipe_char_driver_t;
 
 ssize_t kmsgpipe_read(struct file *file_p, char __user *buf, size_t count, loff_t *f_pos);
 ssize_t kmsgpipe_write(struct file *file_p, const char __user *buf, size_t count, loff_t *f_pos);
@@ -48,7 +38,7 @@ struct file_operations kmsgpipe_fops = {
     .release = kmsgpipe_release,
 };
 
-static int __init kmsgpipe_module_init(void)
+int kmsgpipe_module_init(void)
 {
     int ret;
 
@@ -97,7 +87,7 @@ static int __init kmsgpipe_module_init(void)
     return 0;
 }
 
-static void __exit kmsgpipe_module_exit(void)
+void kmsgpipe_module_exit(void)
 {
     if (char_driver_p)
     {
@@ -145,85 +135,51 @@ int kmsgpipe_release(struct inode *inode_p, struct file *file_p)
 
 ssize_t kmsgpipe_write(struct file *file_p, const char __user *buf, size_t count, loff_t *f_pos)
 {
-    kmsgpipe_char_driver_t *dev;
+    struct kmsgpipe_char_driver *dev;
+    char *kbuf;
+    ssize_t ret;
 
     if (!file_p)
         return -EINVAL;
 
     dev = file_p->private_data;
-    if (!dev || !dev->data)
+    if (!dev)
         return -ENODEV;
 
-    pr_info("kmsgpipe_write: write() system call invoked for %lu bytes\n", count);
+    kbuf = memdup_user(buf, count);
+    if (IS_ERR(kbuf))
+        return PTR_ERR(kbuf);
 
-    /* bounds check against buffer capacity */
-    if (count > dev->size)
-        return -EFAULT;
+    ret = kmsgpipe_write_core(dev, kbuf, count, f_pos);
+    kfree(kbuf);
 
-    /* protect device buffer and offsets */
-    mutex_lock(&dev->mutex);
-
-    /* clear previous contents and copy new data */
-    memset(dev->data, 0, dev->size);
-    if (copy_from_user(dev->data, buf, count))
-    {
-        mutex_unlock(&dev->mutex);
-        return -EFAULT;
-    }
-
-    /* store current used length */
-    dev->data_len = count;
-
-    /* advance file position (use *f_pos, not file->f_pos) */
-    if (f_pos)
-        *f_pos += count;
-
-    pr_info("kmsgpipe_write: wrote %lu bytes to device buffer\n", count);
-
-    mutex_unlock(&dev->mutex);
-    return count;
+    return ret;
 }
 
 ssize_t kmsgpipe_read(struct file *file_p, char __user *buf, size_t count, loff_t *f_pos)
 {
-    kmsgpipe_char_driver_t *dev;
-    size_t avail;
+    struct kmsgpipe_char_driver *dev;
+    char *kbuf;
+    ssize_t ret;
 
     if (!file_p)
         return -EINVAL;
 
     dev = file_p->private_data;
-    if (!dev || !dev->data)
+    if (!dev)
         return -ENODEV;
 
-    pr_info("kmsgpipe_read: read() system call invoked for %lu bytes\n", count);
+    kbuf = kmalloc(count, GFP_KERNEL);
+    if (!kbuf)
+        return -ENOMEM;
 
-    mutex_lock(&dev->mutex);
-
-    /* if file position beyond stored data, nothing to read */
-    if (!dev->data_len || (f_pos && *f_pos >= (loff_t)dev->data_len))
+    ret = kmsgpipe_read_core(dev, kbuf, count, f_pos);
+    if (ret > 0)
     {
-        mutex_unlock(&dev->mutex);
-        return 0;
+        if (copy_to_user(buf, kbuf, ret))
+            ret = -EFAULT;
     }
 
-    avail = dev->data_len - (f_pos ? (size_t)*f_pos : 0);
-    if (count > avail)
-        count = avail;
-
-    if (copy_to_user(buf, dev->data + (f_pos ? *f_pos : 0), count))
-    {
-        mutex_unlock(&dev->mutex);
-        return -EFAULT;
-    }
-
-    /* advance file position */
-    if (f_pos)
-        *f_pos += count;
-
-    mutex_unlock(&dev->mutex);
-
-    return count;
+    kfree(kbuf);
+    return ret;
 }
-module_init(kmsgpipe_module_init);
-module_exit(kmsgpipe_module_exit);
