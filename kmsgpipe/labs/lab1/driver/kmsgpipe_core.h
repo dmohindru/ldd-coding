@@ -17,6 +17,10 @@ struct kmsgpipe_char_driver
 };
 typedef struct kmsgpipe_char_driver kmsgpipe_char_driver_t;
 
+void kmsgpipe_core_init(struct kmsgpipe_char_driver *dev,
+                        void *buffer,
+                        size_t size);
+
 ssize_t kmsgpipe_write_core(struct kmsgpipe_char_driver *dev,
                             const char *src,
                             size_t count,

@@ -1,0 +1,16 @@
+menu "Kmsgpipe driver"
+
+config KMSGPIPE
+	tristate "Kmsgpipe character driver"
+	default n
+	help
+	  Simple character driver for message passing.
+
+config KMSGPIPE_KUNIT_TEST
+	bool "Kmsgpipe KUnit tests"
+	depends on KUNIT && KMSGPIPE
+	default n
+	help
+	  Run KUnit tests for kmsgpipe core logic.
+
+endmenu

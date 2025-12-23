@@ -2,6 +2,16 @@
 #include <linux/errno.h>
 #include "kmsgpipe_core.h"
 
+void kmsgpipe_core_init(struct kmsgpipe_char_driver *dev,
+                        void *buffer,
+                        size_t size)
+{
+    dev->data = buffer;
+    dev->size = size;
+    dev->data_len = 0;
+    mutex_init(&dev->mutex);
+}
+
 ssize_t kmsgpipe_write_core(struct kmsgpipe_char_driver *dev,
                             const char *src,
                             size_t count,

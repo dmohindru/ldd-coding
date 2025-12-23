@@ -168,3 +168,22 @@ Short checklist:
 - Always synchronize access (mutexes for sleeping context, spinlocks for atomic) to avoid races and use-after-free.
 
 This README will be updated with a per-open demo driver example in a later lab to illustrate the differences in practice.
+
+--- working in progress
+
+cd /home/dhruv/opt/linux-next
+
+./tools/testing/kunit/kunit.py run \
+ --kconfig_add=/home/dhruv/Programming/linux-device-driver-programming/ldd3e/ldd3-coding/kmsgpipe/labs/lab1/driver/kunit/kmsgpipe.config
+
+./tools/testing/kunit/kunit.py run --kconfig_add_file=/home/dhruv/Programming/linux-device-driver-programming/ldd3e/ldd3-coding/kmsgpipe/labs/lab1/driver/kunit/kmsgpipe.config
+
+./tools/testing/kunit/kunit.py run \
+ --kunitconfig /home/dhruv/Programming/linux-device-driver-programming/ldd3e/ldd3-coding/kmsgpipe/labs/lab1/driver/kunit/kmsgpipe.config \
+ --kconfig_add="CONFIG_KUNIT=y\nCONFIG_KMSGPIPE=y\nCONFIG_KMSGPIPE_KUNIT_TEST=y"
+
+./tools/testing/kunit/kunit.py run \
+ --kunitconfig /home/dhruv/Programming/linux-device-driver-programming/ldd3e/ldd3-coding/kmsgpipe/labs/lab1/driver/Kconfig \
+ --kconfig_add "CONFIG_KUNIT=y" \
+ --kconfig_add "CONFIG_KMSGPIPE=y" \
+ --kconfig_add "CONFIG_KMSGPIPE_KUNIT_TEST=y"
