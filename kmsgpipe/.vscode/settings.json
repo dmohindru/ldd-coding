@@ -7,7 +7,15 @@
     "seq_file.h": "c"
   },
   "cmake.ignoreCMakeListsMissing": true,
-  "cSpell.words": ["kfree", "kmsgpipe", "loff"],
+  "cSpell.words": [
+    "endmenu",
+    "Kbuild",
+    "Kconfig",
+    "kfree",
+    "kmsgpipe",
+    "kunit",
+    "loff"
+  ],
   "C_Cpp.intelliSenseEngine": "default",
   "C_Cpp.intelliSenseCacheSize": 104857600
 }
