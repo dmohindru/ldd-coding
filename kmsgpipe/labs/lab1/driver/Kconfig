@@ -1,14 +1,14 @@
 menu "Kmsgpipe driver"
 
-config KMSGPIPE
+config KMSGPIPE_LAB1
 	tristate "Kmsgpipe character driver"
 	default n
 	help
 	  Simple character driver for message passing.
 
-config KMSGPIPE_KUNIT_TEST
+config KMSGPIPE_LAB1_KUNIT_TEST
 	bool "Kmsgpipe KUnit tests"
-	depends on KUNIT && KMSGPIPE
+	depends on KUNIT && KMSGPIPE_LAB1
 	default n
 	help
 	  Run KUnit tests for kmsgpipe core logic.

@@ -1,5 +1,3 @@
-// kmsgpipe_core_test.c
-
 #include <kunit/test.h>
 #include <linux/slab.h>
 

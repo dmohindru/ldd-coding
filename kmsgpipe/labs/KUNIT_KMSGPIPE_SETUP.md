@@ -1,7 +1,7 @@
 # KUnit Setup & Execution for Out-of-Tree Linux Driver (kmsgpipe)
 
 This document is a concise, repeatable recipe for setting up and running **KUnit tests**
-for an *out-of-tree* Linux kernel driver, based on the `kmsgpipe` driver.
+for an _out-of-tree_ Linux kernel driver, based on the `kmsgpipe` driver.
 
 ---
 
@@ -16,6 +16,7 @@ KUnit testing involves **three layers**:
 KUnit builds a special kernel, boots it (QEMU/UML), and parses test output.
 
 Golden rule:
+
 > If code cannot be tested with KUnit, it is probably doing too much.
 
 ---
@@ -71,11 +72,13 @@ obj-$(CONFIG_KMSGPIPE_KUNIT_TEST) += kmsgpipe_core_test.o
 ## 5. KUnit Config File
 
 Location:
+
 ```
 drivers/misc/kmsgpipe/kunit/kmsgpipe.config
 ```
 
 Contents:
+
 ```text
 CONFIG_KUNIT=y
 CONFIG_KMSGPIPE=y
@@ -123,6 +126,48 @@ sudo apt install flex bison qemu-system-x86
 
 ✔ KUnit kernel boots  
 ✔ Tests discovered  
-✔ Tests passed  
+✔ Tests passed
 
 You now have a **repeatable KUnit workflow**.
+
+## Out of tree kunit testing technique
+
+### 1. Create a symbolic link of your source directory in kernel directory at location `driver/misc/`
+
+```shell
+cd <Repo-Root>/kernel/drivers/misc
+ln -s ../../../labs/lab1/driver kmsgpipe_lab<n>
+```
+
+### 2. Edit Kconfig file located at `driver/misc/Kconfig` and add following line at the end
+
+```text
+source "drivers/misc/kmsgpipe_lab<n>/Kconfig"
+```
+
+### 3. Modify Makefile located at `driver/misc/Makefile` and add following line at the end
+
+```text
+obj-$(CONFIG_KMSGPIPE_LAB<N>) += kmsgpipe_lab<n>/
+```
+
+Note:
+
+- CONFIG_KMSGPIPE_LAB<N> should have been defined in your driver `Kconfig` file
+- kmsgpipe_lab<n> is a folder created in kernel directory in step 1
+
+### 4. Run Tests with following commands
+
+```shell
+cd repo_root/kernel
+
+./tools/testing/kunit/kunit.py run \
+  --arch=x86_64 \
+  --kunitconfig=drivers/misc/kmsgpipe_lab1/kunit/driver.config
+```
+
+or run the helper script in driver directory
+
+```shell
+./run_kunit.sh
+```
