@@ -1,22 +1,22 @@
 #!/bin/bash
-# make -f ./module.mk
 set -euo pipefail
 
 source "$(dirname "$0")/base.sh"
 
 echo "[build] Building module: $MODULE_NAME"
 echo "[build] Driver dir: $DRIVER_DIR"
+echo "[build] Using makefile: $MODULE_MAKEFILE"
 
 mkdir -p "$BUILD_DIR"
 
-# Run build (do not exit script on failure)
 BUILD_STATUS=0
-make -f "$MODULE_MAKEFILE" || BUILD_STATUS=$?
+if ! make -f "$MODULE_MAKEFILE"; then
+    BUILD_STATUS=$?
+fi
 
 echo "[build] Build finished with status: $BUILD_STATUS"
 echo "[build] Collecting artifacts..."
 
-# Collect *everything* Kbuild might leave behind
 shopt -s nullglob dotglob
 
 ARTIFACTS=(
