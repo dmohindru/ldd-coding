@@ -19,11 +19,16 @@ kmsgpipe/
 │
 ├── labs/
 │   ├── lab1/
-│   │   ├── driver/
-│   │   ├── user_tests/
-│   │   ├── kunit_tests/
 │   │   └── README.md
 │   └── lab2/...
 │
 └── Makefile
 ```
+
+### Notes
+
+Short tutorials on various linux driver building and testing concepts
+
+- [KBuild Objects](./labs/KBuild-objects.md): Info about various kbuild targets used in KBuild Makefile
+- [Testable drivers](./labs/kernel-driver-design-and-testing.md): Info about organizing your driver code so that it is testable using Kunit framework
+- [Kunit setup](./labs/kunit_kmsgpipe_setup.md): A short wiki documenting how to setup your driver code for unit testing with Kunit
