@@ -10,7 +10,7 @@
 #define DEFAULT_DATA_SIZE 1024
 #define DEFAULT_CAPCITY 10
 
-typedef struct kmsgpipe
+typedef struct
 {
     wait_queue_head_t writer_q, reader_q;
     kmsgpipe_buffer_t ring_buffer;
