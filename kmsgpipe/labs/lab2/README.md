@@ -23,3 +23,97 @@ kmsgpipe will expose its functionality via device file. Following features will 
 ### Debug FS
 
 This driver will implement a debug fs to show the current state of device with all the entries of the device ring buffer
+
+# Recommended reading
+
+### ldd3e
+
+- hellop
+- scull_pipe
+
+### Linux apis
+
+init_waitqueue_head();
+wake_up_interruptible();
+wait_event_interruptible();
+wait_queue_head_t;
+
+### Params to the modules
+
+- data_size: size of individual data items
+- capacity: number of items held in a circular buffer
+
+### Memory calculation
+
+- base buffer: data_size \* capacity
+- kms_record_t array size = sizeof(kmsg_record) \* capacity
+
+### Pattern for read file ops
+
+```text
+scull_p_read()
+  |
+  | mutex_lock
+  |
+  | while buffer empty
+  |   unlock
+  |   wait_event_interruptible()  <-- task sleeps here
+  |   (context switch)
+  |
+  | <---- wake_up_interruptible()
+  |
+  | resumes here
+  | mutex_lock
+  | while condition checked again
+  |
+  | read data
+  | wake up sleeping writers
+```
+
+### Pattern for write file ops
+
+```text
+scull_p_write()
+  |
+  | mutex_lock
+  |
+  | while buffer full
+  |   unlock
+  |   wait_event_interruptible()  <-- task sleeps here
+  |   (context switch)
+  |
+  | <---- wake_up_interruptible()
+  |
+  | resumes here
+  | mutex_lock
+  | while condition checked again
+  |
+  | write data
+  | wake up sleeping readers
+```
+
+### Getting UID and GID of the calling process
+
+```c
+#include <linux/cred.h>
+
+kuid_t uid = current_uid();
+kgid_t gid = current_gid();
+```
+
+To print numeric value
+
+```c
+pr_info("uid=%u gid=%u\n",
+        __kuid_val(uid),
+        __kgid_val(gid));
+```
+
+### Getting current ktime stamp
+
+```c
+#include <linux/ktime.h>
+
+ktime_t timestamp = ktime_get();
+
+```
