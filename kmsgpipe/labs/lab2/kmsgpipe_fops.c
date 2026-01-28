@@ -169,7 +169,6 @@ ssize_t kmsgpipe_write(struct file *file_p, const char __user *buf, size_t count
 {
     kmsgpipe_t *dev_p;
     ssize_t op_res;
-    ssize_t msg_count;
 
     if (!file_p)
         return -EINVAL;
@@ -178,17 +177,24 @@ ssize_t kmsgpipe_write(struct file *file_p, const char __user *buf, size_t count
     if (!dev_p)
         return -ENODEV;
 
-    msg_count = kmsgpipe_get_message_count(&dev_p->ring_buffer);
-    if (msg_count < 0)
+    /* Scratch buffer */
+    uint8_t *data = kzalloc(count, GFP_KERNEL);
+    if (!data)
     {
-        return msg_count;
+        return -ENOMEM;
     }
 
-    while (msg_count == dev_p->ring_buffer.capacity)
+    if (mutex_lock_interruptible(&dev_p->mutex))
+    {
+        kfree(data);
+        return -ERESTARTSYS;
+    }
+
+    while (kmsgpipe_get_message_count(&dev_p->ring_buffer) == dev_p->ring_buffer.capacity)
     {
         mutex_unlock(&dev_p->mutex);
-        pr_info("\"%s\" writer: going to sleep\n", current->comm);
-        if (wait_event_interruptible(dev_p->writer_q, (msg_count < dev_p->ring_buffer.capacity)))
+        pr_debug("\"%s\" writer: going to sleep\n", current->comm);
+        if (wait_event_interruptible(dev_p->writer_q, (kmsgpipe_get_message_count(&dev_p->ring_buffer) < dev_p->ring_buffer.capacity)))
         {
             return -ERESTARTSYS;
         }
@@ -196,31 +202,26 @@ ssize_t kmsgpipe_write(struct file *file_p, const char __user *buf, size_t count
         {
             return -ERESTARTSYS;
         }
-        msg_count = kmsgpipe_get_message_count(&dev_p->ring_buffer);
-        if (msg_count < 0)
-        {
-            return msg_count;
-        }
     }
     /* Return error if writer tries to write with a data size greater than allowed data_size*/
     if (count > dev_p->ring_buffer.data_size)
     {
+        mutex_unlock(&dev_p->mutex);
         return -EINVAL;
     }
     count = min(count, dev_p->ring_buffer.data_size);
-    kuid_t uid = current_uid();
-    kgid_t gid = current_gid();
+    uid_t uid = from_kuid(&init_user_ns, current_uid());
+    gid_t gid = from_kgid(&init_user_ns, current_gid());
     ktime_t timestamp = ktime_get();
 
-    /* Allocate buffer to read user data into kernel buffer */
-    uint8_t *data = kzalloc(count, GFP_KERNEL);
     if (copy_from_user(data, buf, count))
     {
         mutex_unlock(&dev_p->mutex);
+        kfree(data);
         return -EFAULT;
     }
 
-    op_res = kmsgpipe_push(&dev_p->ring_buffer, data, count, uid.val, gid.val, timestamp);
+    op_res = kmsgpipe_push(&dev_p->ring_buffer, data, count, uid, gid, timestamp);
 
     if (op_res < 0)
     {
@@ -232,6 +233,7 @@ ssize_t kmsgpipe_write(struct file *file_p, const char __user *buf, size_t count
         wake_up_interruptible(&dev_p->reader_q);
     }
 
+    mutex_unlock(&dev_p->mutex);
     /* free temporary allocated buffer */
     kfree(data);
     return op_res;
@@ -241,7 +243,6 @@ ssize_t kmsgpipe_read(struct file *file_p, char __user *buf, size_t count, loff_
 {
     kmsgpipe_t *dev_p;
     ssize_t op_res;
-    ssize_t msg_count;
 
     if (!file_p)
         return -EINVAL;
@@ -250,18 +251,24 @@ ssize_t kmsgpipe_read(struct file *file_p, char __user *buf, size_t count, loff_
     if (!dev_p)
         return -ENODEV;
 
-    msg_count = kmsgpipe_get_message_count(&dev_p->ring_buffer);
-    /* return error if encountered during get message count*/
-    if (msg_count < 0)
+    /* Scratch buffer */
+    uint8_t *out_buf = kzalloc(count, GFP_KERNEL);
+    if (!out_buf)
     {
-        return msg_count;
+        return -ENOMEM;
     }
 
-    while (msg_count == 0)
+    if (mutex_lock_interruptible(&dev_p->mutex))
+    {
+        kfree(out_buf);
+        return -ERESTARTSYS;
+    }
+
+    while (kmsgpipe_get_message_count(&dev_p->ring_buffer) == 0)
     {
         mutex_unlock(&dev_p->mutex);
-        pr_info("\"%s\" reader: going to sleep\n", current->comm);
-        if (wait_event_interruptible(dev_p->reader_q, (msg_count > 0)))
+        pr_debug("\"%s\" reader: going to sleep\n", current->comm);
+        if (wait_event_interruptible(dev_p->reader_q, (kmsgpipe_get_message_count(&dev_p->ring_buffer) > 0)))
         {
             return -ERESTARTSYS;
         }
@@ -269,31 +276,28 @@ ssize_t kmsgpipe_read(struct file *file_p, char __user *buf, size_t count, loff_
         {
             return -ERESTARTSYS;
         }
-        msg_count = kmsgpipe_get_message_count(&dev_p->ring_buffer);
-        if (msg_count < 0)
-        {
-            return msg_count;
-        }
     }
 
     /* Return error if reader tries to read a data size greater than allowed data_size */
     if (count > dev_p->ring_buffer.data_size)
     {
+        mutex_unlock(&dev_p->mutex);
         return -EINVAL;
     }
 
     count = min(count, dev_p->ring_buffer.data_size);
-    kuid_t uid = current_uid();
-    kgid_t gid = current_gid();
+    uid_t uid = from_kuid(&init_user_ns, current_uid());
+    gid_t gid = from_kgid(&init_user_ns, current_gid());
 
     /* Allocate buffer to read data item from ring buffer */
-    uint8_t *out_buf = kzalloc(count, GFP_KERNEL);
-    op_res = kmsgpipe_pop(&dev_p->ring_buffer, out_buf, uid.val, gid.val);
+
+    op_res = kmsgpipe_pop(&dev_p->ring_buffer, out_buf, uid, gid);
 
     if (op_res < 0)
     {
         pr_err("kmsgpipe_read: error poping data from circular buffer");
         kfree(out_buf);
+        mutex_unlock(&dev_p->mutex);
         return op_res;
     }
 
@@ -307,6 +311,7 @@ ssize_t kmsgpipe_read(struct file *file_p, char __user *buf, size_t count, loff_
         return -EFAULT;
     }
 
+    mutex_unlock(&dev_p->mutex);
     /* free temporary allocated buffer */
     kfree(out_buf);
     return op_res;
