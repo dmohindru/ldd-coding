@@ -93,7 +93,7 @@ int kmsgpipe_module_init(void)
     kmsgpipe_p->ring_buffer.records = records_buffer_p;
 
     /* Initialize ring buffer */
-    kmsgpipe_init(kmsgpipe_p, base_buffer_p, records_buffer_p, capacity, data_size);
+    kmsgpipe_init(&kmsgpipe_p->ring_buffer, base_buffer_p, records_buffer_p, capacity, data_size);
 
     /* Initialize wait queues */
     init_waitqueue_head(&kmsgpipe_p->reader_q);
@@ -114,7 +114,7 @@ int kmsgpipe_module_init(void)
         return ret;
     }
 
-    pr_info("kmsgpipe: module loaded (major=%d, minor=%d)\n", kmsgpipe_char_major, kmsgpipe_char_minor);
+    pr_info("kmsgpipe: module loaded (major=%d, minor=%d) and (data_size=%d, capacity=%d)\n", kmsgpipe_char_major, kmsgpipe_char_minor, data_size, capacity);
     return 0;
 }
 
@@ -167,6 +167,8 @@ int kmsgpipe_release(struct inode *inode_p, struct file *file_p)
 
 ssize_t kmsgpipe_write(struct file *file_p, const char __user *buf, size_t count, loff_t *f_pos)
 {
+
+    pr_info("kmsgpipe_write: invoked with count=%ld\n", count);
     kmsgpipe_t *dev_p;
     ssize_t op_res;
 
@@ -176,6 +178,12 @@ ssize_t kmsgpipe_write(struct file *file_p, const char __user *buf, size_t count
     dev_p = file_p->private_data;
     if (!dev_p)
         return -ENODEV;
+    /* Return error if writer tries to write with a data size greater than allowed data_size*/
+    if (count > dev_p->ring_buffer.data_size)
+    {
+        return -EINVAL;
+    }
+    count = min(count, dev_p->ring_buffer.data_size);
 
     /* Scratch buffer */
     uint8_t *data = kzalloc(count, GFP_KERNEL);
@@ -193,7 +201,7 @@ ssize_t kmsgpipe_write(struct file *file_p, const char __user *buf, size_t count
     while (kmsgpipe_get_message_count(&dev_p->ring_buffer) == dev_p->ring_buffer.capacity)
     {
         mutex_unlock(&dev_p->mutex);
-        pr_debug("\"%s\" writer: going to sleep\n", current->comm);
+        pr_info("\"%s\" writer: going to sleep\n", current->comm);
         if (wait_event_interruptible(dev_p->writer_q, (kmsgpipe_get_message_count(&dev_p->ring_buffer) < dev_p->ring_buffer.capacity)))
         {
             return -ERESTARTSYS;
@@ -203,13 +211,7 @@ ssize_t kmsgpipe_write(struct file *file_p, const char __user *buf, size_t count
             return -ERESTARTSYS;
         }
     }
-    /* Return error if writer tries to write with a data size greater than allowed data_size*/
-    if (count > dev_p->ring_buffer.data_size)
-    {
-        mutex_unlock(&dev_p->mutex);
-        return -EINVAL;
-    }
-    count = min(count, dev_p->ring_buffer.data_size);
+
     uid_t uid = from_kuid(&init_user_ns, current_uid());
     gid_t gid = from_kgid(&init_user_ns, current_gid());
     ktime_t timestamp = ktime_get();
@@ -241,6 +243,7 @@ ssize_t kmsgpipe_write(struct file *file_p, const char __user *buf, size_t count
 
 ssize_t kmsgpipe_read(struct file *file_p, char __user *buf, size_t count, loff_t *f_pos)
 {
+    pr_info("kmsgpipe_read: invoked with count=%ld\n", count);
     kmsgpipe_t *dev_p;
     ssize_t op_res;
 
@@ -250,6 +253,14 @@ ssize_t kmsgpipe_read(struct file *file_p, char __user *buf, size_t count, loff_
     dev_p = file_p->private_data;
     if (!dev_p)
         return -ENODEV;
+
+    /* Return error if reader tries to read a data size greater than allowed data_size */
+    if (count > dev_p->ring_buffer.data_size)
+    {
+        return -EINVAL;
+    }
+
+    count = min(count, dev_p->ring_buffer.data_size);
 
     /* Scratch buffer */
     uint8_t *out_buf = kzalloc(count, GFP_KERNEL);
@@ -267,7 +278,7 @@ ssize_t kmsgpipe_read(struct file *file_p, char __user *buf, size_t count, loff_
     while (kmsgpipe_get_message_count(&dev_p->ring_buffer) == 0)
     {
         mutex_unlock(&dev_p->mutex);
-        pr_debug("\"%s\" reader: going to sleep\n", current->comm);
+        pr_info("\"%s\" reader: going to sleep\n", current->comm);
         if (wait_event_interruptible(dev_p->reader_q, (kmsgpipe_get_message_count(&dev_p->ring_buffer) > 0)))
         {
             return -ERESTARTSYS;
@@ -278,14 +289,6 @@ ssize_t kmsgpipe_read(struct file *file_p, char __user *buf, size_t count, loff_
         }
     }
 
-    /* Return error if reader tries to read a data size greater than allowed data_size */
-    if (count > dev_p->ring_buffer.data_size)
-    {
-        mutex_unlock(&dev_p->mutex);
-        return -EINVAL;
-    }
-
-    count = min(count, dev_p->ring_buffer.data_size);
     uid_t uid = from_kuid(&init_user_ns, current_uid());
     gid_t gid = from_kgid(&init_user_ns, current_gid());
 

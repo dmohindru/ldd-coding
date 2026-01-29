@@ -2,18 +2,18 @@
 #include "kmsgpipe_module.h"
 
 /* local wrappers (required!) */
-static int __init kmsgpipe_init(void)
+static int __init m_init(void)
 {
     return kmsgpipe_module_init();
 }
 
-static void __exit kmsgpipe_exit(void)
+static void __exit m_exit(void)
 {
     kmsgpipe_module_exit();
 }
 
-module_init(kmsgpipe_init);
-module_exit(kmsgpipe_exit);
+module_init(m_init);
+module_exit(m_exit);
 
 MODULE_AUTHOR("Dhruv Mohindru");
 MODULE_LICENSE("Dual BSD/GPL");

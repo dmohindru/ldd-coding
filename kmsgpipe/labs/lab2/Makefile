@@ -1,16 +1,13 @@
-# Common core objects
-kmsgpipe_core-objs := kmsgpipe_core.o
+# Header file location inclusion
+ccflags-y += -I$(src)/../../include
 
 # External module build
-obj-m += kmsgpipe_global.o
+obj-m += kmsgpipe_lab2.o
 
 # In-kernel / KUnit build
-obj-$(CONFIG_KMSGPIPE_LAB1) += kmsgpipe_global.o
+obj-$(CONFIG_KMSGPIPE_LAB2) += kmsgpipe_lab2.o
 
-kmsgpipe_global-objs := \
+kmsgpipe_lab2-objs := \
 	kmsgpipe_module.o \
-	kmsgpipe_fops.o \
-	kmsgpipe_core.o
-
-# KUnit tests (reuse core code)
-obj-$(CONFIG_KMSGPIPE_LAB1_KUNIT_TEST) += kmsgpipe_core_test.o
+	kmsgpipe_fops.o  \
+	../../lib/src/kmsgpipe.o
