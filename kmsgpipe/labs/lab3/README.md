@@ -14,6 +14,7 @@ Following parameters can be view/set
 - GET KMSG_MSG_COUNT
 - GET KMSG_WAITING_READERS
 - GET KMSG_WAITING_WRITERS
+- SET KMSG_EXPIRY_TIME (to be implemented in next lab)
 - SET KMSG_CLEAR_ALL (privilege user only)
 
 ### PRIVILEGE CONTROL
