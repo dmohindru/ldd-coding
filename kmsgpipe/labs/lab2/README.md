@@ -22,7 +22,7 @@ kmsgpipe will expose its functionality via device file. Following features will 
 
 ### Debug FS
 
-This driver will implement a debug fs to show the current state of device with all the entries of the device ring buffer
+This driver will implement a debug fs to show the current state of device with info about capacity, current message count, number of reader and writers sleeping.
 
 # Recommended reading
 
@@ -116,4 +116,10 @@ pr_info("uid=%u gid=%u\n",
 
 ktime_t timestamp = ktime_get();
 
+```
+
+### loading kernel module with params
+
+```sh
+sudo insmod ./kmsgpipe.ko data_size=1024 capacity=32
 ```

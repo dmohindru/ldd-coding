@@ -19,7 +19,8 @@ fi
 
 # 2. Insert module
 echo "[insmod] Inserting module..."
-sudo insmod "$MODULE_KO" || {
+# Forward any command-line parameters to insmod (module parameters)
+sudo insmod "$MODULE_KO" "$@" || {
     echo "[insmod] ERROR: insmod failed"
     exit 1
 }

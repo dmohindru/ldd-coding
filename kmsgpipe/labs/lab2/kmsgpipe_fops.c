@@ -5,6 +5,10 @@
 #include <linux/cred.h>
 #include <linux/ktime.h>
 
+/* For debug fs */
+#include <linux/debugfs.h>
+#include <linux/seq_file.h>
+
 #include <linux/kernel.h>
 #include <linux/slab.h>  /* kmalloc() */
 #include <linux/errno.h> /* error codes */
@@ -21,6 +25,7 @@ MODULE_AUTHOR("Dhruv Mohindru");
 MODULE_LICENSE("Dual BSD/GPL");
 
 static kmsgpipe_t *kmsgpipe_p;
+static struct dentry *kmsgpipe_debugfs_root;
 
 static int kmsgpipe_char_major = 0;
 static int kmsgpipe_char_minor = 0;
@@ -37,6 +42,9 @@ ssize_t kmsgpipe_read(struct file *file_p, char __user *buf, size_t count, loff_
 ssize_t kmsgpipe_write(struct file *file_p, const char __user *buf, size_t count, loff_t *f_pos);
 int kmsgpipe_open(struct inode *inode, struct file *file_p);
 int kmsgpipe_release(struct inode *inode, struct file *file_p);
+/* Function for debug fs support */
+int ksmgpipe_stats_show(struct seq_file *m, void *v);
+int kmsgpipe_stats_open(struct inode *inode, struct file *file);
 
 struct file_operations kmsgpipe_fops = {
     .owner = THIS_MODULE,
@@ -45,6 +53,13 @@ struct file_operations kmsgpipe_fops = {
     .open = kmsgpipe_open,
     .release = kmsgpipe_release,
 };
+
+struct file_operations kmsgpipe_stats_fops = {
+    .owner = THIS_MODULE,
+    .open = kmsgpipe_stats_open,
+    .read = seq_read,
+    .llseek = seq_lseek,
+    .release = single_release};
 
 int kmsgpipe_module_init(void)
 {
@@ -114,6 +129,17 @@ int kmsgpipe_module_init(void)
         return ret;
     }
 
+    /* Initialize debug fs entry*/
+    kmsgpipe_debugfs_root = debugfs_create_dir("kmsgpipe", NULL);
+    if (!kmsgpipe_debugfs_root)
+    {
+        pr_warn("kmsgpipe: debugfs not available\n");
+    }
+    else
+    {
+        debugfs_create_file("stats", 0444, kmsgpipe_debugfs_root, NULL, &kmsgpipe_stats_fops);
+    }
+
     pr_info("kmsgpipe: module loaded (major=%d, minor=%d) and (data_size=%d, capacity=%d)\n", kmsgpipe_char_major, kmsgpipe_char_minor, data_size, capacity);
     return 0;
 }
@@ -129,6 +155,7 @@ void kmsgpipe_module_exit(void)
         kmsgpipe_p = NULL;
     }
     unregister_chrdev_region(kmsgpipe_devno, 1);
+    debugfs_remove_recursive(kmsgpipe_debugfs_root);
     pr_info("kmsgpipe: module unloaded\n");
 }
 
@@ -201,6 +228,10 @@ ssize_t kmsgpipe_write(struct file *file_p, const char __user *buf, size_t count
     while (kmsgpipe_get_message_count(&dev_p->ring_buffer) == dev_p->ring_buffer.capacity)
     {
         mutex_unlock(&dev_p->mutex);
+        if (file_p->f_flags & O_NONBLOCK)
+        {
+            return -EAGAIN;
+        }
         pr_info("\"%s\" writer: going to sleep\n", current->comm);
         if (wait_event_interruptible(dev_p->writer_q, (kmsgpipe_get_message_count(&dev_p->ring_buffer) < dev_p->ring_buffer.capacity)))
         {
@@ -278,6 +309,10 @@ ssize_t kmsgpipe_read(struct file *file_p, char __user *buf, size_t count, loff_
     while (kmsgpipe_get_message_count(&dev_p->ring_buffer) == 0)
     {
         mutex_unlock(&dev_p->mutex);
+        if (file_p->f_flags & O_NONBLOCK)
+        {
+            return -EAGAIN;
+        }
         pr_info("\"%s\" reader: going to sleep\n", current->comm);
         if (wait_event_interruptible(dev_p->reader_q, (kmsgpipe_get_message_count(&dev_p->ring_buffer) > 0)))
         {
@@ -318,4 +353,23 @@ ssize_t kmsgpipe_read(struct file *file_p, char __user *buf, size_t count, loff_
     /* free temporary allocated buffer */
     kfree(out_buf);
     return op_res;
+}
+
+int ksmgpipe_stats_show(struct seq_file *m, void *v)
+{
+    kmsgpipe_t *dev = kmsgpipe_p;
+    ssize_t count;
+    mutex_lock(&dev->mutex);
+    count = kmsgpipe_get_message_count(&dev->ring_buffer);
+    seq_printf(m, "capacity: %zu\n", dev->ring_buffer.capacity);
+    seq_printf(m, "data_size: %zu\n", dev->ring_buffer.data_size);
+    seq_printf(m, "message count: %zu\n", count);
+    mutex_unlock(&dev->mutex);
+
+    return 0;
+}
+
+int kmsgpipe_stats_open(struct inode *inode, struct file *file)
+{
+    return single_open(file, ksmgpipe_stats_show, inode->i_private);
 }
