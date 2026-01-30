@@ -198,6 +198,7 @@ ssize_t kmsgpipe_write(struct file *file_p, const char __user *buf, size_t count
     pr_info("kmsgpipe_write: invoked with count=%ld\n", count);
     kmsgpipe_t *dev_p;
     ssize_t op_res;
+    int ret;
 
     if (!file_p)
         return -EINVAL;
@@ -233,7 +234,12 @@ ssize_t kmsgpipe_write(struct file *file_p, const char __user *buf, size_t count
             return -EAGAIN;
         }
         pr_info("\"%s\" writer: going to sleep\n", current->comm);
-        if (wait_event_interruptible(dev_p->writer_q, (kmsgpipe_get_message_count(&dev_p->ring_buffer) < dev_p->ring_buffer.capacity)))
+        atomic_inc(&dev_p->writer_waiting);
+        ret = wait_event_interruptible(
+            dev_p->writer_q,
+            (kmsgpipe_get_message_count(&dev_p->ring_buffer) < dev_p->ring_buffer.capacity));
+        atomic_dec(&dev_p->writer_waiting);
+        if (ret)
         {
             return -ERESTARTSYS;
         }
@@ -277,6 +283,7 @@ ssize_t kmsgpipe_read(struct file *file_p, char __user *buf, size_t count, loff_
     pr_info("kmsgpipe_read: invoked with count=%ld\n", count);
     kmsgpipe_t *dev_p;
     ssize_t op_res;
+    int ret;
 
     if (!file_p)
         return -EINVAL;
@@ -314,7 +321,10 @@ ssize_t kmsgpipe_read(struct file *file_p, char __user *buf, size_t count, loff_
             return -EAGAIN;
         }
         pr_info("\"%s\" reader: going to sleep\n", current->comm);
-        if (wait_event_interruptible(dev_p->reader_q, (kmsgpipe_get_message_count(&dev_p->ring_buffer) > 0)))
+        atomic_inc(&dev_p->reader_waiting);
+        ret = wait_event_interruptible(dev_p->reader_q, (kmsgpipe_get_message_count(&dev_p->ring_buffer) > 0));
+        atomic_dec(&dev_p->reader_waiting);
+        if (ret)
         {
             return -ERESTARTSYS;
         }
@@ -357,14 +367,16 @@ ssize_t kmsgpipe_read(struct file *file_p, char __user *buf, size_t count, loff_
 
 int ksmgpipe_stats_show(struct seq_file *m, void *v)
 {
-    kmsgpipe_t *dev = kmsgpipe_p;
+    kmsgpipe_t *dev_p = kmsgpipe_p;
     ssize_t count;
-    mutex_lock(&dev->mutex);
-    count = kmsgpipe_get_message_count(&dev->ring_buffer);
-    seq_printf(m, "capacity: %zu\n", dev->ring_buffer.capacity);
-    seq_printf(m, "data_size: %zu\n", dev->ring_buffer.data_size);
+    mutex_lock(&dev_p->mutex);
+    count = kmsgpipe_get_message_count(&dev_p->ring_buffer);
+    seq_printf(m, "capacity: %zu\n", dev_p->ring_buffer.capacity);
+    seq_printf(m, "data_size: %zu\n", dev_p->ring_buffer.data_size);
     seq_printf(m, "message count: %zu\n", count);
-    mutex_unlock(&dev->mutex);
+    seq_printf(m, "readers waiting: %d\n", atomic_read(&dev_p->reader_waiting));
+    seq_printf(m, "writers waiting: %d\n", atomic_read(&dev_p->writer_waiting));
+    mutex_unlock(&dev_p->mutex);
 
     return 0;
 }

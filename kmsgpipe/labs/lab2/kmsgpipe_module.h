@@ -13,6 +13,7 @@
 typedef struct
 {
     wait_queue_head_t writer_q, reader_q;
+    atomic_t reader_waiting, writer_waiting;
     kmsgpipe_buffer_t ring_buffer;
     struct mutex mutex;
     struct cdev cdev;
