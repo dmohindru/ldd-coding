@@ -1,4 +1,5 @@
-# 🧪 kmsgpipe Lab Plan — Part 1  
+# 🧪 kmsgpipe Lab Plan — Part 1
+
 **Project:** kmsgpipe — Kernel Message Pipe Facility  
 **Kernel Target:** 6.6 LTS  
 **Focus:** Hardware-independent driver concepts  
@@ -29,13 +30,13 @@ By the end of Part 1, you will:
 
 ## 🧱 Lab Structure
 
-| Lab | Title | Concept Focus | Estimated Time |
-|------|-------|----------------|----------------|
-| **Lab 1** | Hello kmsgpipe | Basic character driver skeleton | 45 min |
-| **Lab 2** | Persistent Echo | Kernel message buffering & dynamic memory | 60 min |
-| **Lab 3** | Wait Queues & Blocking I/O | Synchronization and concurrency | 90 min |
-| **Lab 4** | ioctl Interface | Control paths and privileged ops | 90 min |
-| **Lab 5** | Workqueue Cleanup | Deferred tasks & timers | 90 min |
+| Lab       | Title                      | Concept Focus                             | Estimated Time |
+| --------- | -------------------------- | ----------------------------------------- | -------------- |
+| **Lab 1** | Hello kmsgpipe             | Basic character driver skeleton           | 45 min         |
+| **Lab 2** | Persistent Echo            | Kernel message buffering & dynamic memory | 60 min         |
+| **Lab 3** | Wait Queues & Blocking I/O | Synchronization and concurrency           | 90 min         |
+| **Lab 4** | ioctl Interface            | Control paths and privileged ops          | 90 min         |
+| **Lab 5** | Workqueue Cleanup          | Deferred tasks & timers                   | 90 min         |
 
 ---
 
@@ -159,6 +160,10 @@ Implement a background cleanup task that periodically clears expired messages.
 - Learn about `mod_timer()`, `del_timer_sync()`, and race conditions.
 - Understand deferring heavy work from the fast path.
 
+## 🧪 Lab 6: Introduce sysfs
+
+For device control introduced in lab4 via ioctl interface, do the same via sysfs as well.
+
 ---
 
 ## 🧠 Capstone Exercise
@@ -194,11 +199,11 @@ Part 2 will introduce:
 
 ## ✅ Deliverables
 
-- `kmsgpipe_basic.c` → Lab 1  
-- `kmsgpipe_buffered.c` → Lab 2  
-- `kmsgpipe_wait.c` → Lab 3  
-- `kmsgpipe_ioctl.c` → Lab 4  
-- `kmsgpipe_workqueue.c` → Lab 5  
+- `kmsgpipe_basic.c` → Lab 1
+- `kmsgpipe_buffered.c` → Lab 2
+- `kmsgpipe_wait.c` → Lab 3
+- `kmsgpipe_ioctl.c` → Lab 4
+- `kmsgpipe_workqueue.c` → Lab 5
 - `kmsgpipe_final.c` → Capstone integrated driver
 
 ---
@@ -214,4 +219,4 @@ Part 2 will introduce:
 ---
 
 > 💡 **Final Thought:**  
-> The goal is not just to “get it working,” but to *understand why it works*. Each lab is designed to teach a specific kernel subsystem concept — together, they form a complete understanding of Linux character driver internals.
+> The goal is not just to “get it working,” but to _understand why it works_. Each lab is designed to teach a specific kernel subsystem concept — together, they form a complete understanding of Linux character driver internals.
