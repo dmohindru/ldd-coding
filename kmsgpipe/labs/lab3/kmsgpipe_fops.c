@@ -20,6 +20,7 @@
 
 #include "kmsgpipe_module.h"
 #include "kmsgpipe.h"
+#include "kmsgpipe_ioctl.h"
 
 MODULE_AUTHOR("Dhruv Mohindru");
 MODULE_LICENSE("Dual BSD/GPL");
@@ -30,6 +31,7 @@ static struct dentry *kmsgpipe_debugfs_root;
 static int kmsgpipe_char_major = 0;
 static int kmsgpipe_char_minor = 0;
 static dev_t kmsgpipe_devno;
+static long expiry_ms = DEFAULT_EXPIRY_MS;
 
 /* Parameters */
 static int data_size = DEFAULT_DATA_SIZE;
@@ -42,6 +44,7 @@ ssize_t kmsgpipe_read(struct file *file_p, char __user *buf, size_t count, loff_
 ssize_t kmsgpipe_write(struct file *file_p, const char __user *buf, size_t count, loff_t *f_pos);
 int kmsgpipe_open(struct inode *inode, struct file *file_p);
 int kmsgpipe_release(struct inode *inode, struct file *file_p);
+long kmsgpipe_ioctl(struct file *filp, unsigned int cmd, unsigned long arg);
 /* Function for debug fs support */
 int ksmgpipe_stats_show(struct seq_file *m, void *v);
 int kmsgpipe_stats_open(struct inode *inode, struct file *file);
@@ -51,6 +54,7 @@ struct file_operations kmsgpipe_fops = {
     .read = kmsgpipe_read,
     .write = kmsgpipe_write,
     .open = kmsgpipe_open,
+    .unlocked_ioctl = kmsgpipe_ioctl,
     .release = kmsgpipe_release,
 };
 
@@ -384,4 +388,53 @@ int ksmgpipe_stats_show(struct seq_file *m, void *v)
 int kmsgpipe_stats_open(struct inode *inode, struct file *file)
 {
     return single_open(file, ksmgpipe_stats_show, inode->i_private);
+}
+
+long kmsgpipe_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
+{
+    kmsgpipe_t *dev_p = kmsgpipe_p;
+    long ret_val = 0, tmp;
+
+    if (_IOC_TYPE(cmd) != KMSGPIPE_IOC_MAGIC)
+        return -ENOTTY;
+    if (_IOC_NR(cmd) > KMSGPIPE_IOC_MAXNR)
+        return -ENOTTY;
+
+    switch (cmd)
+    {
+    case KMSGPIPE_IOC_G_DATA_SIZE:
+        ret_val = put_user(dev_p->ring_buffer.data_size, (long __user *)arg);
+        break;
+
+    case KMSGPIPE_IOC_G_CAPACITY:
+        ret_val = put_user(dev_p->ring_buffer.capacity, (long __user *)arg);
+        break;
+
+    case KMSGPIPE_IOC_G_MSG_COUNT:
+        ssize_t count = kmsgpipe_get_message_count(&dev_p->ring_buffer);
+        ret_val = put_user(count, (long __user *)arg);
+        break;
+
+    case KMSGPIPE_IOC_G_READERS:
+        ret_val = put_user(atomic_read(&dev_p->reader_waiting), (long __user *)arg);
+        break;
+
+    case KMSGPIPE_IOC_G_WRITERS:
+        ret_val = put_user(atomic_read(&dev_p->writer_waiting), (long __user *)arg);
+        break;
+    case KMSGPIPE_IOC_S_EXPIRY_MS:
+        if (!capable(CAP_SYS_ADMIN))
+            return -EPERM;
+        ret_val = get_user(expiry_ms, (long __user *)arg);
+        break;
+
+    case KMSGPIPE_IOC_CLEAR:
+        if (!capable(CAP_SYS_ADMIN))
+            return -EPERM;
+        tmp = kmsgpipe_clear(&dev_p->ring_buffer);
+        ret_val = tmp < 0 ? tmp : 0;
+        break;
+    }
+
+    return ret_val;
 }

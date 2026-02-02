@@ -117,4 +117,14 @@ ssize_t kmsgpipe_cleanup_expired(kmsgpipe_buffer_t *buf, uint64_t expiry_ms);
  */
 ssize_t kmsgpipe_get_message_count(kmsgpipe_buffer_t *buf);
 
+/**
+ * kmsgpipe_clear - Clear all messages
+ * @buf: pointer to buffer
+ *
+ * Returns:
+ *   >=0 messages cleared
+ *   <0  error code
+ */
+ssize_t kmsgpipe_clear(kmsgpipe_buffer_t *buf);
+
 #endif /* KMSGPIPE_H */

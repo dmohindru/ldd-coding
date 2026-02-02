@@ -213,11 +213,6 @@ void should_remove_expired_data_items_from_buffer(void)
 
 void should_not_remove_expired_data_from_empty_buffer(void)
 {
-    // kmsgpipe_push(&buf, first_data, strlen((char *)first_data), first_uid, first_gid, first_ts);
-    // kmsgpipe_push(&buf, second_data, strlen((char *)second_data), second_uid, second_gid, second_ts);
-    // kmsgpipe_push(&buf, third_data, strlen((char *)third_data), third_uid, third_gid, third_ts);
-    // kmsgpipe_push(&buf, forth_data, strlen((char *)forth_data), forth_uid, forth_gid, forth_ts);
-
     ssize_t delete_count = kmsgpipe_cleanup_expired(&buf, second_ts + 5);
     TEST_ASSERT_EQUAL_INT_MESSAGE(0, delete_count, "Failed on deleted message count on removing expired messages from buf");
     TEST_ASSERT_EQUAL_INT_MESSAGE(0, buf.head, "Failed on head field when removing expired messages");
@@ -253,6 +248,10 @@ void should_get_correct_data_item_count_from_buffer_when_head_is_wrapped_around(
     TEST_ASSERT_EQUAL_INT_MESSAGE(2, count, "Failed on message count from buffer when head is wrapped around");
 }
 
+void should_clear_all_messages_from_buffer(void)
+{
+}
+
 int main(void)
 {
     UNITY_BEGIN();
@@ -269,6 +268,7 @@ int main(void)
     RUN_TEST(should_not_remove_expired_data_from_empty_buffer);
     RUN_TEST(should_get_correct_data_item_count_from_buffer);
     RUN_TEST(should_get_correct_data_item_count_from_buffer_when_head_is_wrapped_around);
+    RUN_TEST(should_clear_all_messages_from_buffer);
 
     return UNITY_END();
 }

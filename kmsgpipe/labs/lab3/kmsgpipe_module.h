@@ -9,6 +9,7 @@
 
 #define DEFAULT_DATA_SIZE 1024
 #define DEFAULT_CAPCITY 10
+#define DEFAULT_EXPIRY_MS 60000 /* 1 Minute */
 
 typedef struct
 {
