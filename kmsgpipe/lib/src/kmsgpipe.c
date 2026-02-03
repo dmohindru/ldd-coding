@@ -123,7 +123,8 @@ ssize_t kmsgpipe_cleanup_expired(kmsgpipe_buffer_t *buf, uint64_t expiry_ms)
 ssize_t kmsgpipe_clear(kmsgpipe_buffer_t *buf)
 {
     ssize_t count = kmsgpipe_get_message_count(buf);
-    memset(buf->base, 0, buf->data_size * buf->data_size);
+    /* Clear the data buffer: capacity * data_size (not data_size * data_size) */
+    memset(buf->base, 0, buf->capacity * buf->data_size);
     memset(buf->records, 0, buf->capacity * sizeof(kmsg_record_t));
     buf->head = 0;
     buf->tail = 0;

@@ -250,6 +250,18 @@ void should_get_correct_data_item_count_from_buffer_when_head_is_wrapped_around(
 
 void should_clear_all_messages_from_buffer(void)
 {
+    kmsgpipe_push(&buf, first_data, strlen((char *)first_data), first_uid, first_gid, first_ts);
+    kmsgpipe_push(&buf, second_data, strlen((char *)second_data), second_uid, second_gid, second_ts);
+    kmsgpipe_push(&buf, third_data, strlen((char *)third_data), third_uid, third_gid, third_ts);
+    kmsgpipe_push(&buf, forth_data, strlen((char *)forth_data), forth_uid, forth_gid, forth_ts);
+    ssize_t cleared_msgs = kmsgpipe_clear(&buf);
+    ssize_t count = kmsgpipe_get_message_count(&buf);
+    TEST_ASSERT_EQUAL_INT_MESSAGE(4, cleared_msgs, "Failed on clearing messages from buffer");
+    TEST_ASSERT_EQUAL_INT_MESSAGE(0, count, "Failed on getting right message count after clearing buffer");
+    TEST_ASSERT_EQUAL_INT_MESSAGE(0, buf.head, "Failed on setting buffer.head after clearing buffer");
+    TEST_ASSERT_EQUAL_INT_MESSAGE(0, buf.tail, "Failed on setting buffer.tail after clearing buffer");
+    TEST_ASSERT_EACH_EQUAL_UINT8(0x00, buf.base, TEST_CAPACITY * TEST_DATA_SIZE);
+    TEST_ASSERT_EACH_EQUAL_UINT8(0x00, buf.records, TEST_CAPACITY * sizeof(kmsg_record_t));
 }
 
 int main(void)
