@@ -12,6 +12,7 @@
     "Kbuild",
     "Kconfig",
     "kfree",
+    "kmsgctl",
     "kmsgpipe",
     "kunit",
     "loff"
