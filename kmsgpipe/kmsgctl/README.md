@@ -11,6 +11,7 @@
 | `KMSGPIPE_IOC_G_MSG_COUNT` | `kmsgctl get msg-count`     |
 | `KMSGPIPE_IOC_G_READERS`   | `kmsgctl get readers`       |
 | `KMSGPIPE_IOC_G_WRITERS`   | `kmsgctl get writers`       |
+| `KMSGPIPE_IOC_G_EXPIRY_MS` | `kmsgctl get expiry-ms`     |
 | (all above)                | `kmsgctl stats`             |
 | `KMSGPIPE_IOC_S_EXPIRY_MS` | `kmsgctl set expiry-ms <N>` |
 | `KMSGPIPE_IOC_CLEAR`       | `kmsgctl clear`             |
@@ -32,6 +33,7 @@ kmsgctl get capacity
 kmsgctl get msg-count
 kmsgctl get readers
 kmsgctl get writers
+kmsgctl get expiry-ms
 ```
 
 **Grouped Status**

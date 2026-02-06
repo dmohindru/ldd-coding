@@ -422,6 +422,9 @@ long kmsgpipe_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
     case KMSGPIPE_IOC_G_WRITERS:
         ret_val = put_user(atomic_read(&dev_p->writer_waiting), (long __user *)arg);
         break;
+    case KMSGPIPE_IOC_G_EXPIRY_MS:
+        ret_val = put_user(expiry_ms, (long __user *)arg);
+        break;
     case KMSGPIPE_IOC_S_EXPIRY_MS:
         if (!capable(CAP_SYS_ADMIN))
             return -EPERM;
