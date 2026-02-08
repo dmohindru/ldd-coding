@@ -1,5 +1,5 @@
-# lab 4
+# lab 5
 
 This lab will demo periodic clean of circular buffer message using
 
-- delayed_work jiq.c (Ch 7)
+- Event-driver cleanup jit.c (Ch7) and short.c (Ch10)
