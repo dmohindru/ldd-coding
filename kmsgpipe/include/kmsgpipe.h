@@ -99,13 +99,13 @@ ssize_t kmsgpipe_pop(
 /**
  * kmsgpipe_cleanup_expired - Remove expired messages
  * @buf:        pointer to buffer
- * @expiry_ms:  absolute timestamp in milliseconds since Unix epoch
+ * @current_ts:  absolute timestamp in milliseconds since Unix epoch
  *
  * Returns:
  *   >=0 number of messages deleted
  *   <0  error code
  */
-ssize_t kmsgpipe_cleanup_expired(kmsgpipe_buffer_t *buf, uint64_t expiry_ms);
+ssize_t kmsgpipe_cleanup_expired(kmsgpipe_buffer_t *buf, ktime_t current_ts);
 
 /**
  * kmsgpipe_get_message_count - Get number of valid messages
