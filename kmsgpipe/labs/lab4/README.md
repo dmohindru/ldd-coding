@@ -2,9 +2,7 @@
 
 This lab will demo periodic clean of circular buffer message using
 
-- delayed_work jiq.c (Ch 7)
-
-Module Init periodic cleanup
+Using delayed work
 
 ```c
 INIT_DELAYED_WORK(&dev->cleanup_dwork, cleanup_worker);
