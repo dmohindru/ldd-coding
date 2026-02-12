@@ -5,11 +5,12 @@
 #include <linux/types.h>
 #include <linux/uaccess.h>
 #include <linux/cdev.h>
+#include <linux/workqueue.h>
 #include "kmsgpipe.h"
 
 #define DEFAULT_DATA_SIZE 1024
 #define DEFAULT_CAPCITY 10
-#define DEFAULT_EXPIRY_MS 60000 /* 1 Minute */
+#define DEFAULT_EXPIRY_MS 30000 /* 30 Seconds */
 
 typedef struct
 {
@@ -18,6 +19,7 @@ typedef struct
     kmsgpipe_buffer_t ring_buffer;
     struct mutex mutex;
     struct cdev cdev;
+    struct delayed_work kmsg_delayed_work;
 } kmsgpipe_t;
 
 int kmsgpipe_module_init(void);

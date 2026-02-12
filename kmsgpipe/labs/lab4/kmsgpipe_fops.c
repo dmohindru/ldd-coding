@@ -48,6 +48,7 @@ long kmsgpipe_ioctl(struct file *filp, unsigned int cmd, unsigned long arg);
 /* Function for debug fs support */
 int ksmgpipe_stats_show(struct seq_file *m, void *v);
 int kmsgpipe_stats_open(struct inode *inode, struct file *file);
+void kmsgpipe_cleanup_worker(struct work_struct *work);
 
 struct file_operations kmsgpipe_fops = {
     .owner = THIS_MODULE,
@@ -144,14 +145,20 @@ int kmsgpipe_module_init(void)
         debugfs_create_file("stats", 0444, kmsgpipe_debugfs_root, NULL, &kmsgpipe_stats_fops);
     }
 
+    /* Initialise delay worker, and schedule it */
+    INIT_DELAYED_WORK(&kmsgpipe_p->kmsg_delayed_work, kmsgpipe_cleanup_worker);
+    schedule_delayed_work(&kmsgpipe_p->kmsg_delayed_work, msecs_to_jiffies(expiry_ms));
+
     pr_info("kmsgpipe: module loaded (major=%d, minor=%d) and (data_size=%d, capacity=%d)\n", kmsgpipe_char_major, kmsgpipe_char_minor, data_size, capacity);
     return 0;
 }
 
 void kmsgpipe_module_exit(void)
 {
+    debugfs_remove_recursive(kmsgpipe_debugfs_root);
     if (kmsgpipe_p)
     {
+        cancel_delayed_work_sync(&kmsgpipe_p->kmsg_delayed_work);
         cdev_del(&kmsgpipe_p->cdev);
         kfree(kmsgpipe_p->ring_buffer.base);
         kfree(kmsgpipe_p->ring_buffer.records);
@@ -159,7 +166,6 @@ void kmsgpipe_module_exit(void)
         kmsgpipe_p = NULL;
     }
     unregister_chrdev_region(kmsgpipe_devno, 1);
-    debugfs_remove_recursive(kmsgpipe_debugfs_root);
     pr_info("kmsgpipe: module unloaded\n");
 }
 
@@ -434,4 +440,25 @@ long kmsgpipe_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
     }
 
     return ret_val;
+}
+
+void kmsgpipe_cleanup_worker(struct work_struct *work)
+{
+    kmsgpipe_t *kmsgpipe_dev;
+    ktime_t timestamp = ktime_get();
+
+    kmsgpipe_dev = container_of(work,
+                                kmsgpipe_t,
+                                kmsg_delayed_work.work);
+
+    if (mutex_lock_interruptible(&kmsgpipe_dev->mutex))
+    {
+        return;
+    }
+
+    kmsgpipe_cleanup_expired(&kmsgpipe_dev->ring_buffer, timestamp);
+    wake_up_interruptible(&kmsgpipe_dev->writer_q);
+
+    mutex_unlock(&kmsgpipe_dev->mutex);
+    schedule_delayed_work(&kmsgpipe_dev->kmsg_delayed_work, msecs_to_jiffies(expiry_ms));
 }
