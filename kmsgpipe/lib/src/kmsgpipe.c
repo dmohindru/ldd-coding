@@ -108,10 +108,10 @@ ssize_t kmsgpipe_get_message_count(kmsgpipe_buffer_t *buf)
     return count;
 }
 
-ssize_t kmsgpipe_cleanup_expired(kmsgpipe_buffer_t *buf, uint64_t expiry_ms)
+ssize_t kmsgpipe_cleanup_expired(kmsgpipe_buffer_t *buf, ktime_t current_ts)
 {
     int expired_count = 0;
-    while (buf->records[buf->tail].valid && buf->records[buf->tail].timestamp < expiry_ms)
+    while (buf->records[buf->tail].valid && buf->records[buf->tail].timestamp < current_ts)
     {
         buf->records[buf->tail].valid = false;
         buf->tail = (buf->tail + 1) % buf->capacity;
