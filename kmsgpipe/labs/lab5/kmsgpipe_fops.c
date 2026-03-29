@@ -17,6 +17,7 @@
 #include <linux/seq_file.h>
 #include <linux/cdev.h>
 #include <linux/mutex.h>
+#include <linux/poll.h>
 
 #include "kmsgpipe_module.h"
 #include "kmsgpipe.h"
@@ -45,6 +46,7 @@ ssize_t kmsgpipe_write(struct file *file_p, const char __user *buf, size_t count
 int kmsgpipe_open(struct inode *inode, struct file *file_p);
 int kmsgpipe_release(struct inode *inode, struct file *file_p);
 long kmsgpipe_ioctl(struct file *filp, unsigned int cmd, unsigned long arg);
+unsigned int kmsgpipe_poll(struct file *filp, poll_table *wait);
 /* Function for debug fs support */
 int ksmgpipe_stats_show(struct seq_file *m, void *v);
 int kmsgpipe_stats_open(struct inode *inode, struct file *file);
@@ -57,7 +59,7 @@ struct file_operations kmsgpipe_fops = {
     .open = kmsgpipe_open,
     .unlocked_ioctl = kmsgpipe_ioctl,
     .release = kmsgpipe_release,
-};
+    .poll = kmsgpipe_poll};
 
 struct file_operations kmsgpipe_stats_fops = {
     .owner = THIS_MODULE,
@@ -441,6 +443,29 @@ long kmsgpipe_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
     }
 
     return ret_val;
+}
+
+unsigned int kmsgpipe_poll(struct file *filp, poll_table *wait)
+{
+    kmsgpipe_t *kmsgpipe_dev = filp->private_data;
+    unsigned int mask = 0;
+
+    poll_wait(filp, &kmsgpipe_dev->reader_q, wait);
+    poll_wait(filp, &kmsgpipe_dev->writer_q, wait);
+    mutex_lock(&kmsgpipe_dev->mutex);
+
+    int msg_count = kmsgpipe_get_message_count(&kmsgpipe_dev->ring_buffer);
+
+    // Readable condition
+    if (msg_count > 0)
+        mask |= POLLIN;
+
+    // Writable condition
+    if (msg_count < kmsgpipe_dev->ring_buffer.capacity)
+        mask |= POLLOUT;
+
+    mutex_unlock(&kmsgpipe_dev->mutex);
+    return mask;
 }
 
 void kmsgpipe_cleanup_worker(struct work_struct *work)

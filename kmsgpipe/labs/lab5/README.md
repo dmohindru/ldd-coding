@@ -149,6 +149,14 @@ All three together form the foundation of scalable I/O systems in Linux.
 
 If your driver does not respect O_NONBLOCK and always blocks in read/write, then it undermines the usefulness of .poll for event-driven programming. While .poll may still wake processes, it no longer guarantees that subsequent I/O won’t block—breaking the assumptions required for correct reactor-style designs.
 
+# Examples
+
+Simple kernel examples
+
+- `drivers/char/random.c`
+- `fs/pipe.c`
+- `drivers/tty/tty_io.c`
+
 # TODO
 
 - user land code to test non blocking feature rust tokio. Design user land application.
