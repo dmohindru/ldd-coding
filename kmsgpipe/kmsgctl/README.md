@@ -236,3 +236,43 @@ No writes for X seconds
 ### Phase 4
 
 - Chaos testing
+
+## Outcomes
+
+So the real thing you’re testing is:
+Does my driver behave correctly when used in a reactor (epoll) system?
+
+Your test is not about “does read/write work”
+It is about:
+Does the driver correctly coordinate sleep and wakeup across multiple processes using epoll?
+
+kmsgctl stress thrash --writers 10 --readers 10 --mode nonblocking
+
+Print logs
+[W1] write ok
+[W2] EAGAIN
+[R1] read ok
+
+```rust
+for i in 0..5 {
+    tokio::spawn(writer_task(i));
+}
+
+for i in 0..5 {
+    tokio::spawn(reader_task(i));
+}
+```
+
+Suggested Next Step
+
+Start with:
+
+1 process
+2 writers + 2 readers
+separate FDs per task
+log:
+reads
+writes
+EAGAIN
+
+Then scale up.
