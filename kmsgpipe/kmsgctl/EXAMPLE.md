@@ -108,6 +108,20 @@ async fn reader_task(id: usize, async_fd: Arc<AsyncFd<std::fs::File>>) {
 }
 ```
 
+## Implementation
+
+I have got my thought bit more sorted out now. I will list my objective and then proposed implementation plan Objective:
+
+1. Foremost to visualise the poll/select (blocking) with non blocking read write
+2. Not currently interested in performance/throughput since can't really conceive that idea fully.
+
+Implementation plan
+
+1. Let there be n (say 5) fast writer. Each writer would be a separate task having its own copy of fd to driver file. I call these writer to be a fast writers, writing to buffer.
+2. Let there be m (say 3) slow readers. Each reader would be a separate task having its own copy of fd to driver file. I call these reader to be a slow readers, reading/consuming from buffer after delay of 500ms-1000ms.
+3. This will cause writer to sleep and wake as message are being consumed by readers. And reader would not sleep.
+4. A text based dashboard then updates the status of each writer/reader, that I can observe and have some visualisation. Structure of dashboard be like
+
 ## The Key Insight
 
 You want to visualize:
