@@ -5,12 +5,12 @@
       "includePath": [
         "${workspaceFolder}/include",
         "${workspaceFolder}/third_party/unity/src",
-        "/usr/src/linux-headers-6.14.0-35-generic/include",
-        "/usr/src/linux-headers-6.14.0-35-generic/include/uapi",
-        "/usr/src/linux-headers-6.14.0-35-generic/include/generated",
-        "/usr/src/linux-headers-6.14.0-35-generic/arch/x86/include",
-        "/usr/src/linux-headers-6.14.0-35-generic/arch/x86/include/uapi",
-        "/usr/src/linux-headers-6.14.0-35-generic/arch/x86/include/generated"
+        "/usr/src/linux-headers-6.14.0-27-generic/include",
+        "/usr/src/linux-headers-6.14.0-27-generic/include/uapi",
+        "/usr/src/linux-headers-6.14.0-27-generic/include/generated",
+        "/usr/src/linux-headers-6.14.0-27-generic/arch/x86/include",
+        "/usr/src/linux-headers-6.14.0-27-generic/arch/x86/include/uapi",
+        "/usr/src/linux-headers-6.14.0-27-generic/arch/x86/include/generated"
       ],
       "defines": ["__KERNEL__", "MODULE"],
       "compilerPath": "/usr/bin/gcc",
