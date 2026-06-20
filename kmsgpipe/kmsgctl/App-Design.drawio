@@ -1,0 +1,43 @@
+<mxfile host="app.diagrams.net">
+  <diagram name="Page-1" id="xQTKSwKTZ6JJgpKSss3I">
+    <mxGraphModel dx="2054" dy="1212" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="57AgQdyzW8p8X0ig6o4E-1" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="" vertex="1">
+          <mxGeometry height="600" width="740" x="40" y="160" as="geometry" />
+        </mxCell>
+        <mxCell id="57AgQdyzW8p8X0ig6o4E-2" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;fontStyle=1" value="KMSGCTL TUI Interface" vertex="1">
+          <mxGeometry height="30" width="216" x="306" y="100" as="geometry" />
+        </mxCell>
+        <mxCell id="57AgQdyzW8p8X0ig6o4E-3" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;fontColor=#333333;strokeColor=#666666;align=center;" value="IOCTL Commands&lt;div&gt;Panel&lt;/div&gt;" vertex="1">
+          <mxGeometry height="150" width="160" x="60" y="200" as="geometry" />
+        </mxCell>
+        <mxCell id="57AgQdyzW8p8X0ig6o4E-4" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;fontColor=#333333;strokeColor=#666666;align=center;" value="DevFS Content" vertex="1">
+          <mxGeometry height="150" width="160" x="60" y="380" as="geometry" />
+        </mxCell>
+        <mxCell id="57AgQdyzW8p8X0ig6o4E-5" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;fontColor=#333333;strokeColor=#666666;align=center;" value="(Single) Manual Reader Status&lt;div&gt;(Running/Sleeping)&lt;/div&gt;" vertex="1">
+          <mxGeometry height="150" width="160" x="240" y="380" as="geometry" />
+        </mxCell>
+        <mxCell id="57AgQdyzW8p8X0ig6o4E-6" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;fontColor=#333333;strokeColor=#666666;align=center;" value="(Single) Manual Writer Status&lt;div&gt;(Running/Sleeping)&lt;/div&gt;" vertex="1">
+          <mxGeometry height="150" width="160" x="420" y="380" as="geometry" />
+        </mxCell>
+        <mxCell id="57AgQdyzW8p8X0ig6o4E-7" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;fontColor=#333333;strokeColor=#666666;align=center;" value="All Command list" vertex="1">
+          <mxGeometry height="330" width="160" x="600" y="200" as="geometry" />
+        </mxCell>
+        <mxCell id="57AgQdyzW8p8X0ig6o4E-8" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;fontColor=#333333;strokeColor=#666666;align=center;" value="Poll Status&lt;div&gt;1. Num readers&lt;/div&gt;&lt;div&gt;2.Num Writers&lt;/div&gt;&lt;div&gt;3. A table to show num readers and writers waiting/running&lt;/div&gt;" vertex="1">
+          <mxGeometry height="150" width="340" x="240" y="200" as="geometry" />
+        </mxCell>
+        <mxCell id="57AgQdyzW8p8X0ig6o4E-9" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;fontColor=#333333;strokeColor=#666666;align=center;" value="Status Bar: Device &lt;b&gt;/dev/kmsgpipe&lt;/b&gt;, DevFS &lt;b&gt;/dev/devfs&lt;/b&gt;, SysFS &lt;b&gt;/sys/sysfs, &lt;/b&gt;Mode: &lt;b&gt;(Input/Output)&lt;/b&gt;" vertex="1">
+          <mxGeometry height="30" width="710" x="60" y="700" as="geometry" />
+        </mxCell>
+        <mxCell id="57AgQdyzW8p8X0ig6o4E-10" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;fontColor=#333333;strokeColor=#666666;align=center;" value="Input Panel: To write to kmsgpipe device" vertex="1">
+          <mxGeometry height="30" width="710" x="60" y="585" as="geometry" />
+        </mxCell>
+        <mxCell id="57AgQdyzW8p8X0ig6o4E-12" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;fontColor=#333333;strokeColor=#666666;align=center;" value="Output Panel: WIll read from kmsgpipe device&amp;nbsp;" vertex="1">
+          <mxGeometry height="30" width="710" x="60" y="640" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
