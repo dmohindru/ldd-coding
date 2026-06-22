@@ -18,6 +18,13 @@
 
 ## IOCTL CLI interface
 
+**Interactive session**
+
+```sh
+kmsgctl [--device /dev/kmsgpipe0] --interactive
+
+```
+
 **Command Structure**
 
 ```sh
@@ -276,3 +283,11 @@ writes
 EAGAIN
 
 Then scale up.
+
+### First draft of TUI
+
+1. Status bar
+2. Panel showing IOCTL command list
+3. DevFS Content panel
+4. Input panel to take IOCTL commands
+5. App command lists for navigating into various command modes

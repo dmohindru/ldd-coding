@@ -1,11 +1,23 @@
+mod app;
 mod cli;
 mod ioctl;
 
+use crate::app::App;
 use crate::cli::{IoctlCommands, IoctlGetCommands, IoctlSetCommands, KmsgpipeCli};
 use crate::ioctl::KmsgpipeDevice;
 use clap::Parser;
 use nix::libc::c_long;
-use std::process;
+use ratatui::crossterm::execute;
+use ratatui::{
+    Terminal,
+    backend::{Backend, CrosstermBackend},
+    crossterm::{
+        event::{self, DisableMouseCapture, EnableMouseCapture},
+        terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
+    },
+};
+use std::io;
+use std::{error::Error, process};
 
 fn main() {
     let cli = KmsgpipeCli::parse();
@@ -17,7 +29,17 @@ fn main() {
             process::exit(1);
         }
     };
-    match cli.command {
+    let interactive_mode = cli.interactive;
+    if interactive_mode {
+        run_interactive_mode().unwrap();
+        return;
+    }
+
+    if cli.command.is_none() {
+        eprintln!("Missing sub commands. For more information, try '--help'. ");
+        process::exit(1);
+    }
+    match cli.command.unwrap() {
         IoctlCommands::Get { op } => match op {
             IoctlGetCommands::DataSize => process_get_command(device.data_size()),
             IoctlGetCommands::Capacity => process_get_command(device.capacity()),
@@ -48,4 +70,36 @@ fn process_set_command(op_result: nix::Result<()>) {
         eprintln!("{}", e);
         process::exit(1);
     }
+}
+
+fn run_interactive_mode() -> Result<(), Box<dyn Error>> {
+    enable_raw_mode()?;
+    let mut stderr = io::stderr();
+    execute!(stderr, EnterAlternateScreen, EnableMouseCapture)?;
+    let backend = CrosstermBackend::new(stderr);
+    let mut terminal = Terminal::new(backend)?;
+
+    let mut app = App::new();
+    run_app(&mut terminal, &mut app)?;
+
+    disable_raw_mode()?;
+    execute!(
+        terminal.backend_mut(),
+        LeaveAlternateScreen,
+        DisableMouseCapture
+    )?;
+    terminal.show_cursor()?;
+    Ok(())
+}
+
+fn run_app<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> std::io::Result<()> {
+    loop {
+        terminal
+            .draw(|f| f.render_widget("kmsgctl tui", f.area()))
+            .unwrap();
+        if event::read()?.is_key_press() {
+            break;
+        }
+    }
+    Ok(())
 }
