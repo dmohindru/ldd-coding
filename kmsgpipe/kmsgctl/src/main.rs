@@ -1,10 +1,12 @@
 mod app;
 mod cli;
 mod ioctl;
+mod ui;
 
 use crate::app::App;
 use crate::cli::{IoctlCommands, IoctlGetCommands, IoctlSetCommands, KmsgpipeCli};
 use crate::ioctl::KmsgpipeDevice;
+use crate::ui::ui;
 use clap::Parser;
 use nix::libc::c_long;
 use ratatui::crossterm::execute;
@@ -94,9 +96,11 @@ fn run_interactive_mode() -> Result<(), Box<dyn Error>> {
 
 fn run_app<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> std::io::Result<()> {
     loop {
-        terminal
-            .draw(|f| f.render_widget("kmsgctl tui", f.area()))
-            .unwrap();
+        // terminal
+        //     .draw(|f| f.render_widget("kmsgctl tui", f.area()))
+        //     .unwrap();
+        terminal.draw(|f| ui(f, app)).unwrap();
+
         if event::read()?.is_key_press() {
             break;
         }
