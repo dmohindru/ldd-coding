@@ -1,6 +1,6 @@
 use ratatui::{
     Frame,
-    layout::{Constraint, Direction, Layout},
+    layout::{Constraint, Direction, Flex, Layout, Rect},
     style::{Color, Style},
     text::{Line, Span, Text},
     widgets::{Block, Borders, Paragraph},
@@ -19,7 +19,14 @@ pub fn ui(frame: &mut Frame, app: &App) {
         ])
         .split(frame.area());
 
-    // Top Panel
+    render_top_panel(frame, chunks[0]);
+
+    render_middle_panel(frame, chunks[1]);
+
+    render_status(frame, chunks[2]);
+}
+
+fn render_top_panel(frame: &mut Frame, area: Rect) {
     let top_panel_block = Block::default()
         .borders(Borders::ALL)
         .style(Style::default());
@@ -28,9 +35,10 @@ pub fn ui(frame: &mut Frame, app: &App) {
         Paragraph::new(Text::styled("Top Panel", Style::default().fg(Color::Gray)))
             .block(top_panel_block);
 
-    frame.render_widget(top_panel_title, chunks[0]);
+    frame.render_widget(top_panel_title, area);
+}
 
-    // Middle Panel
+fn render_middle_panel(frame: &mut Frame, area: Rect) {
     let middle_panel_block = Block::default()
         .borders(Borders::ALL)
         .style(Style::default());
@@ -41,16 +49,46 @@ pub fn ui(frame: &mut Frame, app: &App) {
     ))
     .block(middle_panel_block);
 
-    frame.render_widget(middle_panel_title, chunks[1]);
+    frame.render_widget(middle_panel_title, area);
+}
 
-    // Status bar
-    let status_bar_block = Block::default()
+fn render_status(frame: &mut Frame, area: Rect) {
+    let status_block = Block::default()
+        .title("Status")
         .borders(Borders::ALL)
+        .border_style(Style::default())
         .style(Style::default());
 
-    let status_bar_title =
-        Paragraph::new(Text::styled("Status Bar", Style::default().fg(Color::Gray)))
-            .block(status_bar_block);
+    let status_block_area = status_block.inner(area);
+    frame.render_widget(status_block, area);
 
-    frame.render_widget(status_bar_title, chunks[2]);
+    let status_bar_chunks = Layout::horizontal([
+        Constraint::Percentage(33),
+        Constraint::Percentage(33),
+        Constraint::Percentage(33),
+    ])
+    .flex(Flex::SpaceBetween)
+    .split(status_block_area);
+
+    let device_file = Paragraph::new(Text::styled(
+        "Device file: /dev/Some_device_file",
+        Style::default().fg(Color::White),
+    ))
+    .block(Block::default());
+    frame.render_widget(device_file, status_bar_chunks[0]);
+
+    let msg_size = Paragraph::new(Text::styled(
+        "Msg size: 1024 Bytes",
+        Style::default().fg(Color::White),
+    ))
+    .block(Block::default());
+    frame.render_widget(msg_size, status_bar_chunks[1]);
+
+    let msg_size = Paragraph::new(Text::styled(
+        "Msg Count: 20",
+        Style::default().fg(Color::White),
+    ))
+    .block(Block::default());
+
+    frame.render_widget(msg_size, status_bar_chunks[2]);
 }
