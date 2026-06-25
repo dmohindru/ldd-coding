@@ -63,15 +63,16 @@ fn render_status(frame: &mut Frame, area: Rect) {
     frame.render_widget(status_block, area);
 
     let status_bar_chunks = Layout::horizontal([
-        Constraint::Percentage(33),
-        Constraint::Percentage(33),
-        Constraint::Percentage(33),
+        Constraint::Percentage(25),
+        Constraint::Percentage(25),
+        Constraint::Percentage(25),
+        Constraint::Percentage(25),
     ])
-    .flex(Flex::SpaceBetween)
+    .flex(Flex::SpaceEvenly)
     .split(status_block_area);
 
     let device_file = Paragraph::new(Text::styled(
-        "Device file: /dev/Some_device_file",
+        "Device: /dev/Some_device_file",
         Style::default().fg(Color::White),
     ))
     .block(Block::default());
@@ -84,11 +85,19 @@ fn render_status(frame: &mut Frame, area: Rect) {
     .block(Block::default());
     frame.render_widget(msg_size, status_bar_chunks[1]);
 
-    let msg_size = Paragraph::new(Text::styled(
+    let msg_count = Paragraph::new(Text::styled(
         "Msg Count: 20",
         Style::default().fg(Color::White),
     ))
     .block(Block::default());
 
-    frame.render_widget(msg_size, status_bar_chunks[2]);
+    frame.render_widget(msg_count, status_bar_chunks[2]);
+
+    let capacity = Paragraph::new(Text::styled(
+        "Capacity: 100",
+        Style::default().fg(Color::White),
+    ))
+    .block(Block::default());
+
+    frame.render_widget(capacity, status_bar_chunks[3]);
 }
