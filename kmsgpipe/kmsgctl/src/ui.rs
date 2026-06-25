@@ -2,7 +2,7 @@ use ratatui::{
     Frame,
     layout::{Constraint, Direction, Flex, Layout, Rect},
     style::{Color, Style},
-    text::{Line, Span, Text},
+    text::Text,
     widgets::{Block, Borders, Paragraph},
 };
 
@@ -23,7 +23,7 @@ pub fn ui(frame: &mut Frame, app: &App) {
 
     render_middle_panel(frame, chunks[1]);
 
-    render_status(frame, chunks[2]);
+    render_status(frame, chunks[2], app);
 }
 
 fn render_top_panel(frame: &mut Frame, area: Rect) {
@@ -52,7 +52,7 @@ fn render_middle_panel(frame: &mut Frame, area: Rect) {
     frame.render_widget(middle_panel_title, area);
 }
 
-fn render_status(frame: &mut Frame, area: Rect) {
+fn render_status(frame: &mut Frame, area: Rect, app: &App) {
     let status_block = Block::default()
         .title("Status")
         .borders(Borders::ALL)
@@ -72,21 +72,21 @@ fn render_status(frame: &mut Frame, area: Rect) {
     .split(status_block_area);
 
     let device_file = Paragraph::new(Text::styled(
-        "Device: /dev/Some_device_file",
+        format!("Device: {}", &app.device.file_path),
         Style::default().fg(Color::White),
     ))
     .block(Block::default());
     frame.render_widget(device_file, status_bar_chunks[0]);
 
     let msg_size = Paragraph::new(Text::styled(
-        "Msg size: 1024 Bytes",
+        format!("Msg size: {} Bytes", &app.data_size),
         Style::default().fg(Color::White),
     ))
     .block(Block::default());
     frame.render_widget(msg_size, status_bar_chunks[1]);
 
     let msg_count = Paragraph::new(Text::styled(
-        "Msg Count: 20",
+        format!("Msg Count: {}", &app.msg_count),
         Style::default().fg(Color::White),
     ))
     .block(Block::default());
@@ -94,7 +94,7 @@ fn render_status(frame: &mut Frame, area: Rect) {
     frame.render_widget(msg_count, status_bar_chunks[2]);
 
     let capacity = Paragraph::new(Text::styled(
-        "Capacity: 100",
+        format!("Capacity: {}", &app.capacity),
         Style::default().fg(Color::White),
     ))
     .block(Block::default());

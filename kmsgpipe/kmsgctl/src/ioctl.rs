@@ -16,13 +16,20 @@ ioctl_write_ptr!(kmsgpipe_ioc_s_expiry_ms, KMSGPIPE_IOC_MAGIC, 7, c_long);
 ioctl_none!(kmsgpipe_ioc_clear, KMSGPIPE_IOC_MAGIC, 8);
 
 pub struct KmsgpipeDevice {
+    pub file_path: String,
     file: File,
 }
 
 impl KmsgpipeDevice {
     pub fn open(path: String) -> std::io::Result<Self> {
-        let file = OpenOptions::new().read(true).write(true).open(path)?;
-        Ok(Self { file })
+        let file = OpenOptions::new()
+            .read(true)
+            .write(true)
+            .open(path.clone())?;
+        Ok(Self {
+            file_path: path,
+            file,
+        })
     }
 
     fn fd(&self) -> RawFd {

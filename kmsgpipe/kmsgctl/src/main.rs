@@ -33,7 +33,7 @@ fn main() {
     };
     let interactive_mode = cli.interactive;
     if interactive_mode {
-        run_interactive_mode().unwrap();
+        run_interactive_mode(device).unwrap();
         return;
     }
 
@@ -74,14 +74,14 @@ fn process_set_command(op_result: nix::Result<()>) {
     }
 }
 
-fn run_interactive_mode() -> Result<(), Box<dyn Error>> {
+fn run_interactive_mode(device: KmsgpipeDevice) -> Result<(), Box<dyn Error>> {
     enable_raw_mode()?;
     let mut stderr = io::stderr();
     execute!(stderr, EnterAlternateScreen, EnableMouseCapture)?;
     let backend = CrosstermBackend::new(stderr);
     let mut terminal = Terminal::new(backend)?;
 
-    let mut app = App::new();
+    let mut app = App::new(device);
     run_app(&mut terminal, &mut app)?;
 
     disable_raw_mode()?;
