@@ -18,4 +18,16 @@ impl App {
             capacity,
         }
     }
+
+    pub fn get_data_size(&self) -> i64 {
+        self.device.data_size().unwrap()
+    }
+
+    pub fn get_msg_count(&self) -> i64 {
+        self.device.msg_count().unwrap()
+    }
+
+    pub fn get_capacity(&self) -> i64 {
+        self.device.capacity().unwrap()
+    }
 }

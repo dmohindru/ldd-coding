@@ -79,14 +79,14 @@ fn render_status(frame: &mut Frame, area: Rect, app: &App) {
     frame.render_widget(device_file, status_bar_chunks[0]);
 
     let msg_size = Paragraph::new(Text::styled(
-        format!("Msg size: {} Bytes", &app.data_size),
+        format!("Msg size: {} Bytes", &app.get_data_size()),
         Style::default().fg(Color::White),
     ))
     .block(Block::default());
     frame.render_widget(msg_size, status_bar_chunks[1]);
 
     let msg_count = Paragraph::new(Text::styled(
-        format!("Msg Count: {}", &app.msg_count),
+        format!("Msg Count: {}", &app.get_msg_count()),
         Style::default().fg(Color::White),
     ))
     .block(Block::default());
@@ -94,7 +94,7 @@ fn render_status(frame: &mut Frame, area: Rect, app: &App) {
     frame.render_widget(msg_count, status_bar_chunks[2]);
 
     let capacity = Paragraph::new(Text::styled(
-        format!("Capacity: {}", &app.capacity),
+        format!("Capacity: {}", &app.get_capacity()),
         Style::default().fg(Color::White),
     ))
     .block(Block::default());
