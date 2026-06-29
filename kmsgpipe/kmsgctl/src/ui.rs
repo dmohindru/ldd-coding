@@ -11,45 +11,47 @@ use crate::app::App;
 pub fn ui(frame: &mut Frame, app: &App) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
-        .margin(1)
+        // .margin(1)
         .constraints([
+            Constraint::Length(3),
             Constraint::Fill(1),
             Constraint::Length(3),
             Constraint::Length(3),
         ])
         .split(frame.area());
 
-    render_top_panel(frame, chunks[0]);
+    render_top_panel(frame, chunks[0], app);
 
-    render_middle_panel(frame, chunks[1]);
+    render_middle_panel(frame, chunks[1], app);
 
     render_status(frame, chunks[2], app);
+
+    render_menu_bar(frame, chunks[3], app);
 }
 
-fn render_top_panel(frame: &mut Frame, area: Rect) {
-    let top_panel_block = Block::default()
+fn render_top_panel(frame: &mut Frame, area: Rect, app: &App) {
+    let panel_block = Block::default()
         .borders(Borders::ALL)
         .style(Style::default());
 
-    let top_panel_title =
-        Paragraph::new(Text::styled("Top Panel", Style::default().fg(Color::Gray)))
-            .block(top_panel_block);
+    let panel_title = Paragraph::new(Text::styled("Top Panel", Style::default().fg(Color::Gray)))
+        .block(panel_block);
 
-    frame.render_widget(top_panel_title, area);
+    frame.render_widget(panel_title, area);
 }
 
-fn render_middle_panel(frame: &mut Frame, area: Rect) {
-    let middle_panel_block = Block::default()
+fn render_middle_panel(frame: &mut Frame, area: Rect, app: &App) {
+    let panel_block = Block::default()
         .borders(Borders::ALL)
         .style(Style::default());
 
-    let middle_panel_title = Paragraph::new(Text::styled(
+    let panel_title = Paragraph::new(Text::styled(
         "Middle Panel",
         Style::default().fg(Color::Gray),
     ))
-    .block(middle_panel_block);
+    .block(panel_block);
 
-    frame.render_widget(middle_panel_title, area);
+    frame.render_widget(panel_title, area);
 }
 
 fn render_status(frame: &mut Frame, area: Rect, app: &App) {
@@ -100,4 +102,15 @@ fn render_status(frame: &mut Frame, area: Rect, app: &App) {
     .block(Block::default());
 
     frame.render_widget(capacity, status_bar_chunks[3]);
+}
+
+fn render_menu_bar(frame: &mut Frame, area: Rect, app: &App) {
+    let panel_block = Block::default()
+        .borders(Borders::ALL)
+        .style(Style::default());
+
+    let panel_title = Paragraph::new(Text::styled("Menu Bar", Style::default().fg(Color::Gray)))
+        .block(panel_block);
+
+    frame.render_widget(panel_title, area);
 }

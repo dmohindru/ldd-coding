@@ -9,6 +9,7 @@ use crate::ioctl::KmsgpipeDevice;
 use crate::ui::ui;
 use clap::Parser;
 use nix::libc::c_long;
+use ratatui::crossterm::event::{Event, KeyCode};
 use ratatui::crossterm::execute;
 use ratatui::{
     Terminal,
@@ -101,8 +102,10 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> std::io::Re
         //     .unwrap();
         terminal.draw(|f| ui(f, app)).unwrap();
 
-        if event::read()?.is_key_press() {
-            break;
+        if let Event::Key(key) = event::read()? {
+            if key.code == KeyCode::F(10) {
+                break;
+            }
         }
     }
     Ok(())
