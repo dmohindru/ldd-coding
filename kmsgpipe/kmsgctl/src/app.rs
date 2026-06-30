@@ -4,7 +4,6 @@ pub enum CurrentScreen {
     Dashboard, //TODO come up with a better name here
     Ioctl,
     Automation,
-    Exiting,
 }
 pub struct App {
     pub device: KmsgpipeDevice,

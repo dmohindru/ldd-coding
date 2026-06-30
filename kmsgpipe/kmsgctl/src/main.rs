@@ -3,13 +3,13 @@ mod cli;
 mod ioctl;
 mod ui;
 
-use crate::app::App;
+use crate::app::{App, CurrentScreen};
 use crate::cli::{IoctlCommands, IoctlGetCommands, IoctlSetCommands, KmsgpipeCli};
 use crate::ioctl::KmsgpipeDevice;
 use crate::ui::ui;
 use clap::Parser;
 use nix::libc::c_long;
-use ratatui::crossterm::event::{Event, KeyCode};
+use ratatui::crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers};
 use ratatui::crossterm::execute;
 use ratatui::{
     Terminal,
@@ -97,16 +97,69 @@ fn run_interactive_mode(device: KmsgpipeDevice) -> Result<(), Box<dyn Error>> {
 
 fn run_app<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> std::io::Result<()> {
     loop {
-        // terminal
-        //     .draw(|f| f.render_widget("kmsgctl tui", f.area()))
-        //     .unwrap();
         terminal.draw(|f| ui(f, app)).unwrap();
 
         if let Event::Key(key) = event::read()? {
-            if key.code == KeyCode::F(10) {
+            if key.modifiers.contains(KeyModifiers::CONTROL)
+                && (key.code == KeyCode::Char('q') || key.code == KeyCode::Char('Q'))
+            {
                 break;
+            }
+            match app.current_screen {
+                CurrentScreen::Main => handle_main_screen_input(key, app),
+                CurrentScreen::Dashboard => handle_dashboard_screen_input(key, app),
+                CurrentScreen::Ioctl => handle_ioctl_screen_input(key, app),
+                CurrentScreen::Automation => handle_automation_screen_input(key, app),
             }
         }
     }
     Ok(())
+}
+
+fn handle_main_screen_input(key: KeyEvent, app: &mut App) {
+    match key.code {
+        KeyCode::F(1) => app.current_screen = CurrentScreen::Dashboard,
+        KeyCode::F(2) => app.current_screen = CurrentScreen::Ioctl,
+        KeyCode::F(3) => app.current_screen = CurrentScreen::Automation,
+        _ => {}
+    }
+}
+
+fn handle_dashboard_screen_input(key: KeyEvent, app: &mut App) {
+    match key.code {
+        KeyCode::Esc => app.current_screen = CurrentScreen::Main,
+        KeyCode::F(2) => app.current_screen = CurrentScreen::Ioctl,
+        KeyCode::F(3) => app.current_screen = CurrentScreen::Automation,
+        KeyCode::Enter => { /* perform Write */ }
+        KeyCode::Char(c)
+            if key.modifiers.contains(KeyModifiers::CONTROL) && c.eq_ignore_ascii_case(&'r') =>
+        { /* perform Read */ }
+        _ => {}
+    }
+}
+
+fn handle_ioctl_screen_input(key: KeyEvent, app: &mut App) {
+    match key.code {
+        KeyCode::Esc => app.current_screen = CurrentScreen::Main,
+        KeyCode::F(1) => app.current_screen = CurrentScreen::Dashboard,
+        KeyCode::F(3) => app.current_screen = CurrentScreen::Automation,
+        // TODO: Add keyboard handling for selecting various IOCTL commands
+        _ => {}
+    }
+}
+
+fn handle_automation_screen_input(key: KeyEvent, app: &mut App) {
+    match key.code {
+        KeyCode::Esc => app.current_screen = CurrentScreen::Main,
+        KeyCode::F(1) => app.current_screen = CurrentScreen::Dashboard,
+        KeyCode::F(2) => app.current_screen = CurrentScreen::Ioctl,
+        KeyCode::Char(c)
+            if key.modifiers.contains(KeyModifiers::CONTROL) && c.eq_ignore_ascii_case(&'s') =>
+        { /* perform automation start */ }
+        KeyCode::Char(c)
+            if key.modifiers.contains(KeyModifiers::CONTROL) && c.eq_ignore_ascii_case(&'e') =>
+        { /* perform automation end */ }
+        // TODO: Add keyboard handling for selecting various IOCTL commands
+        _ => {}
+    }
 }
