@@ -58,13 +58,7 @@ pub fn render_menu_bar(frame: &mut Frame, area: Rect, app: &App) {
 
     let menu_item_text: Vec<Paragraph> = menu_items
         .iter()
-        .map(|item| {
-            Paragraph::new(Text::styled(
-                item.menu_text(),
-                Style::default().fg(Color::White),
-            ))
-            .block(Block::default())
-        })
+        .map(|item| get_menu_widget(item))
         .collect();
     let menu_items_zipped: Vec<(&Rect, &Paragraph)> = menu_items_layout_chunks
         .iter()
@@ -114,4 +108,12 @@ fn get_automation_menu_items() -> Vec<MenuItems> {
         MenuItems::Ioctl,
         MenuItems::Quit,
     ]
+}
+
+fn get_menu_widget(menu_item: &MenuItems) -> Paragraph<'_> {
+    Paragraph::new(Text::styled(
+        menu_item.menu_text(),
+        Style::default().fg(Color::White),
+    ))
+    .block(Block::default())
 }
