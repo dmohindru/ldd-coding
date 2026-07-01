@@ -22,9 +22,13 @@ pub struct KmsgpipeCli {
     #[arg(short, long)]
     pub device: String,
 
+    /// Command line switch for interactive session
+    #[arg(short, long)]
+    pub interactive: bool,
+
     /// The subcommand to run
     #[command(subcommand)]
-    pub command: IoctlCommands,
+    pub command: Option<IoctlCommands>,
 }
 
 #[derive(Subcommand, Debug)]
